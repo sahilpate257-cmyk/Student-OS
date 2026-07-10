@@ -17,7 +17,7 @@ export const db = firebase.firestore();
 function defaultState() {
   return {
     version: 1,
-    settings: { userName: "Sahil", currency: "$", currentEnergy: "high" },
+    settings: { userName: "Sahil", currency: "£", currentEnergy: "high" },
     deadlines: [],
     tasks: [],
     transactions: [],

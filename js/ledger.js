@@ -27,6 +27,8 @@ export const LedgerModule = {
         this.render();
       } else if (action === "delete-tx") {
         Store.remove("transactions", id);
+      } else if (action === "set-currency") {
+        Store.setSetting("currency", btn.dataset.currency);
       }
     });
 
@@ -49,6 +51,7 @@ export const LedgerModule = {
     });
 
     Store.subscribe("transactions:changed", () => this.render());
+    Store.subscribe("settings:changed", () => this.render());
     this.render();
   },
 
@@ -117,10 +120,17 @@ export const LedgerModule = {
                 class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 px-1">✕</button>
       </li>`).join("");
 
+    const currencyToggle = ["£", "$"].map((c) => `
+      <button data-action="set-currency" data-currency="${c}"
+              class="w-7 h-7 rounded text-sm font-medium ${cur === c ? "bg-indigo-500/20 text-indigo-300 border border-indigo-400/60" : "text-slate-500 hover:text-slate-300 border border-transparent"}">
+        ${c}
+      </button>`).join("");
+
     this.el.innerHTML = `
       <div class="flex items-center justify-between mb-3">
         <h2 class="font-semibold text-slate-100">💰 Hustle Ledger</h2>
         <div class="flex items-center gap-2 text-sm">
+          <div class="flex items-center gap-0.5 mr-1">${currencyToggle}</div>
           <button data-action="prev-month" class="px-2 py-1 rounded hover:bg-slate-800">‹</button>
           <span class="w-32 text-center text-slate-300">${monthName}</span>
           <button data-action="next-month" class="px-2 py-1 rounded hover:bg-slate-800">›</button>

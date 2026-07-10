@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Student OS — Personal Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen antialiased">
+
+  <header class="sticky top-0 z-20 backdrop-blur bg-slate-950/80 border-b border-slate-800">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 py-3">
+      <h1 class="font-bold text-lg tracking-tight">⚡ Student<span class="text-indigo-400">OS</span></h1>
+      <span id="header-date" class="text-sm text-slate-400 hidden sm:block"></span>
+      <button id="quick-add"
+              class="bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-medium rounded-lg px-3.5 py-1.5">
+        ＋ Brain Dump
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 pb-24 lg:pb-6">
+    <section id="calendar-module"
+             class="lg:col-span-7 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
+
+    <section id="energy-module"
+             class="lg:col-span-5 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
+
+    <section id="ledger-module"
+             class="lg:col-span-5 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
+
+    <section id="notes-module"
+             class="lg:col-span-7 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
+
+    <section id="gym-module"
+             class="lg:col-span-12 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
+  </main>
+
+  <!-- mobile bottom nav -->
+  <nav class="lg:hidden fixed bottom-0 inset-x-0 z-20 backdrop-blur bg-slate-950/90 border-t border-slate-800">
+    <div class="grid grid-cols-5 text-center text-xs text-slate-400">
+      <button data-nav="calendar-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">📅</span>Deadlines</button>
+      <button data-nav="energy-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">⚡</span>Tasks</button>
+      <button data-nav="ledger-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">💰</span>Ledger</button>
+      <button data-nav="notes-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">📝</span>Notes</button>
+      <button data-nav="gym-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">🏋️</span>Gym</button>
+    </div>
+  </nav>
+
+<script>
+(() => {
+"use strict";
+
+/* =========================================================
+   STORE — single source of truth: state, persistence, pub/sub
+   ========================================================= */
+
+const KEY = "student_os_v1";
+
+function defaultState() {
+  return {
+    version: 1,
+    settings: { userName: "Sahil", currency: "$", currentEnergy: "high" },
+    deadlines: [],
+    tasks: [],
+    transactions: [],
+    notes: [],
+    workouts: [],
+  };
+}
+
+const Store = {
+  state: defaultState(),
+  _listeners: {},
+  isFirstRun: false,
+
+  load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        this.state = { ...defaultState(), ...JSON.parse(raw) };
+      } else {
+        this.isFirstRun = true;
+      }
+    } catch (e) {
+      console.warn("Store: could not load saved state, starting fresh", e);
+    }
+  },
+
+  save() {
+    localStorage.setItem(KEY, JSON.stringify(this.state));
+  },
+
+  subscribe(event, fn) {
+    (this._listeners[event] ??= []).push(fn);
+  },
+
+  emit(event) {
+    (this._listeners[event] ?? []).forEach((fn) => fn());
+  },
+
+  uid(prefix) {
+    return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  },
+
+  add(collection, item) {
+    this.state[collection].push(item);
+    this.save();
+    this.emit(`${collection}:changed`);
+    return item;
+  },
+
+  update(collection, id, patch) {
+    const item = this.state[collection].find((i) => i.id === id);
+    if (!item) return;
+    Object.assign(item, patch);
+    this.save();
+    this.emit(`${collection}:changed`);
+  },
+
+  remove(collection, id) {
+    this.state[collection] = this.state[collection].filter((i) => i.id !== id);
+    this.save();
+    this.emit(`${collection}:changed`);
+  },
+
+  setSetting(key, value) {
+    this.state.settings[key] = value;
+    this.save();
+    this.emit("settings:changed");
+  },
+};
+
+// ---- shared helpers ----
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+function formatDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+const SOURCE = {
+  uni: { label: "Uni", dot: "bg-blue-400", badge: "bg-blue-500/15 text-blue-300 border border-blue-500/30" },
+  hustle: { label: "Hustle", dot: "bg-emerald-400", badge: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" },
+};
+
+/* =========================================================
+   CALENDAR MODULE — month grid + unified deadline list
+   ========================================================= */
+
+const CalendarModule = {
+  el: null,
+  view: { y: 0, m: 0 }, // m is 0-indexed
+
+  init() {
+    this.el = document.getElementById("calendar-module");
+    const now = new Date();
+    this.view = { y: now.getFullYear(), m: now.getMonth() };
+
+    this.el.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const { action, id } = btn.dataset;
+      if (action === "prev-month") {
+        this.view.m--;
+        if (this.view.m < 0) { this.view.m = 11; this.view.y--; }
+        this.render();
+      } else if (action === "next-month") {
+        this.view.m++;
+        if (this.view.m > 11) { this.view.m = 0; this.view.y++; }
+        this.render();
+      } else if (action === "toggle-deadline") {
+        const dl = Store.state.deadlines.find((d) => d.id === id);
+        if (dl) Store.update("deadlines", id, { done: !dl.done });
+      } else if (action === "delete-deadline") {
+        Store.remove("deadlines", id);
+      }
+    });
+
+    this.el.addEventListener("submit", (e) => {
+      if (e.target.id !== "deadline-form") return;
+      e.preventDefault();
+      const f = e.target;
+      const title = f.title.value.trim();
+      const dueDate = f.dueDate.value;
+      if (!title || !dueDate) return;
+      Store.add("deadlines", {
+        id: Store.uid("dl"),
+        title,
+        source: f.source.value,
+        dueDate,
+        done: false,
+        notes: "",
+      });
+      f.reset();
+      f.dueDate.value = todayISO();
+    });
+
+    Store.subscribe("deadlines:changed", () => this.render());
+    this.render();
+  },
+
+  render() {
+    const { y, m } = this.view;
+    const today = todayISO();
+    const monthName = new Date(y, m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+    const byDate = {};
+    for (const dl of Store.state.deadlines) {
+      (byDate[dl.dueDate] ??= []).push(dl);
+    }
+
+    const firstWeekday = (new Date(y, m, 1).getDay() + 6) % 7;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    let cells = "";
+    for (let i = 0; i < firstWeekday; i++) cells += `<div></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const isToday = iso === today;
+      const dots = (byDate[iso] ?? [])
+        .slice(0, 3)
+        .map((dl) => `<span class="w-1.5 h-1.5 rounded-full ${SOURCE[dl.source].dot}"></span>`)
+        .join("");
+      cells += `
+        <div class="aspect-square flex flex-col items-center justify-center rounded-lg text-sm
+                    ${isToday ? "bg-indigo-500/20 ring-1 ring-indigo-400 font-bold text-indigo-200" : "text-slate-300 hover:bg-slate-800/60"}">
+          <span>${d}</span>
+          <span class="flex gap-0.5 h-1.5 mt-0.5">${dots}</span>
+        </div>`;
+    }
+
+    const sorted = [...Store.state.deadlines].sort((a, b) =>
+      a.done - b.done || a.dueDate.localeCompare(b.dueDate)
+    );
+    const rows = sorted.map((dl) => {
+      const overdue = !dl.done && dl.dueDate < today;
+      const s = SOURCE[dl.source];
+      return `
+        <li class="flex items-center gap-3 py-2 group">
+          <button data-action="toggle-deadline" data-id="${dl.id}"
+                  class="w-5 h-5 shrink-0 rounded border ${dl.done ? "bg-emerald-500 border-emerald-500" : "border-slate-600 hover:border-slate-400"} flex items-center justify-center text-xs text-slate-950 font-bold">
+            ${dl.done ? "✓" : ""}
+          </button>
+          <div class="flex-1 min-w-0">
+            <p class="truncate ${dl.done ? "line-through text-slate-500" : ""}">${escapeHtml(dl.title)}</p>
+          </div>
+          <span class="text-[11px] px-2 py-0.5 rounded-full ${s.badge}">${s.label}</span>
+          <span class="text-xs w-16 text-right ${overdue ? "text-rose-400 font-semibold" : "text-slate-400"}">
+            ${overdue ? "⚠ " : ""}${formatDate(dl.dueDate)}
+          </span>
+          <button data-action="delete-deadline" data-id="${dl.id}"
+                  class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 px-1">✕</button>
+        </li>`;
+    }).join("");
+
+    this.el.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-slate-100">📅 Calendar &amp; Deadlines</h2>
+        <div class="flex items-center gap-2 text-sm">
+          <button data-action="prev-month" class="px-2 py-1 rounded hover:bg-slate-800">‹</button>
+          <span class="w-32 text-center text-slate-300">${monthName}</span>
+          <button data-action="next-month" class="px-2 py-1 rounded hover:bg-slate-800">›</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-500 mb-1">
+        ${["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<div>${d}</div>`).join("")}
+      </div>
+      <div class="grid grid-cols-7 gap-1 mb-4">${cells}</div>
+
+      <div class="flex items-center gap-3 text-xs text-slate-400 mb-2">
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-400"></span> Uni</span>
+        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Hustle</span>
+      </div>
+
+      <ul class="divide-y divide-slate-800 mb-3 max-h-56 overflow-y-auto">
+        ${rows || `<li class="py-3 text-sm text-slate-500">No deadlines yet — add one below.</li>`}
+      </ul>
+
+      <form id="deadline-form" class="flex flex-wrap gap-2">
+        <input name="title" placeholder="New deadline…" required
+               class="flex-1 min-w-40 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+        <select name="source" class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm">
+          <option value="uni">🎓 Uni</option>
+          <option value="hustle">💼 Hustle</option>
+        </select>
+        <input name="dueDate" type="date" value="${todayISO()}" required
+               class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-300" />
+        <button class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Add</button>
+      </form>`;
+  },
+};
+
+/* =========================================================
+   ENERGY RANKER — tasks sorted into high/medium/low brainpower lanes
+   ========================================================= */
+
+const LEVELS = [
+  { key: "high", label: "High", icon: "🔥", accent: "text-rose-300", ring: "ring-rose-400/60", chip: "bg-rose-500/15 border-rose-500/40" },
+  { key: "medium", label: "Medium", icon: "⚡", accent: "text-amber-300", ring: "ring-amber-400/60", chip: "bg-amber-500/15 border-amber-500/40" },
+  { key: "low", label: "Low", icon: "🌙", accent: "text-sky-300", ring: "ring-sky-400/60", chip: "bg-sky-500/15 border-sky-500/40" },
+];
+
+const EnergyRanker = {
+  el: null,
+
+  init() {
+    this.el = document.getElementById("energy-module");
+
+    this.el.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const { action, id, level } = btn.dataset;
+      if (action === "set-energy") {
+        Store.setSetting("currentEnergy", level);
+        this.render();
+      } else if (action === "toggle-task") {
+        const t = Store.state.tasks.find((t) => t.id === id);
+        if (t) Store.update("tasks", id, { done: !t.done });
+      } else if (action === "delete-task") {
+        Store.remove("tasks", id);
+      }
+    });
+
+    this.el.addEventListener("submit", (e) => {
+      if (e.target.id !== "task-form") return;
+      e.preventDefault();
+      const f = e.target;
+      const title = f.title.value.trim();
+      if (!title) return;
+      Store.add("tasks", {
+        id: Store.uid("tk"),
+        title,
+        energy: f.energy.value,
+        done: false,
+        linkedDeadlineId: f.deadline.value || null,
+        createdAt: new Date().toISOString(),
+      });
+      f.reset();
+    });
+
+    Store.subscribe("tasks:changed", () => this.render());
+    Store.subscribe("deadlines:changed", () => this.render()); // linked badges
+    this.render();
+  },
+
+  render() {
+    const current = Store.state.settings.currentEnergy;
+    const deadlineTitle = (id) => Store.state.deadlines.find((d) => d.id === id)?.title;
+
+    const energyButtons = LEVELS.map((l) => `
+      <button data-action="set-energy" data-level="${l.key}"
+              class="px-3 py-1.5 rounded-full text-xs font-medium border transition
+                     ${current === l.key ? `${l.chip} ${l.accent}` : "border-slate-700 text-slate-400 hover:border-slate-500"}">
+        ${l.icon} ${l.label}
+      </button>`).join("");
+
+    const columns = LEVELS.map((l) => {
+      const tasks = Store.state.tasks
+        .filter((t) => t.energy === l.key)
+        .sort((a, b) => a.done - b.done);
+      const active = current === l.key;
+
+      const cards = tasks.map((t) => {
+        const linked = t.linkedDeadlineId ? deadlineTitle(t.linkedDeadlineId) : null;
+        return `
+          <li class="flex items-start gap-2 bg-slate-800/60 rounded-lg px-2.5 py-2 group">
+            <button data-action="toggle-task" data-id="${t.id}"
+                    class="mt-0.5 w-4 h-4 shrink-0 rounded border ${t.done ? "bg-emerald-500 border-emerald-500" : "border-slate-600 hover:border-slate-400"} flex items-center justify-center text-[10px] text-slate-950 font-bold">
+              ${t.done ? "✓" : ""}
+            </button>
+            <div class="flex-1 min-w-0 text-sm">
+              <p class="${t.done ? "line-through text-slate-500" : ""}">${escapeHtml(t.title)}</p>
+              ${linked ? `<p class="text-[11px] text-slate-500 truncate">🔗 ${escapeHtml(linked)}</p>` : ""}
+            </div>
+            <button data-action="delete-task" data-id="${t.id}"
+                    class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400">✕</button>
+          </li>`;
+      }).join("");
+
+      return `
+        <div class="rounded-xl bg-slate-900/80 border border-slate-800 p-3 ${active ? `ring-2 ${l.ring}` : ""}">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold ${l.accent}">${l.icon} ${l.label}</h3>
+            ${active ? `<span class="text-[10px] uppercase tracking-wide text-slate-400">do these now</span>` : ""}
+          </div>
+          <ul class="space-y-1.5 min-h-10">
+            ${cards || `<li class="text-xs text-slate-600 py-1">Nothing here.</li>`}
+          </ul>
+        </div>`;
+    }).join("");
+
+    const deadlineOptions = Store.state.deadlines
+      .filter((d) => !d.done)
+      .map((d) => `<option value="${d.id}">${escapeHtml(d.title)}</option>`)
+      .join("");
+
+    this.el.innerHTML = `
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <h2 class="font-semibold text-slate-100">⚡ Energy Ranker</h2>
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-slate-500 mr-1">My energy:</span>
+          ${energyButtons}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-3 mb-3">${columns}</div>
+
+      <form id="task-form" class="flex flex-wrap gap-2">
+        <input name="title" placeholder="New task…" required
+               class="flex-1 min-w-36 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+        <select name="energy" class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm">
+          <option value="high">🔥 High</option>
+          <option value="medium">⚡ Medium</option>
+          <option value="low">🌙 Low</option>
+        </select>
+        <select name="deadline" class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm max-w-36">
+          <option value="">No link</option>
+          ${deadlineOptions}
+        </select>
+        <button class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Add</button>
+      </form>`;
+  },
+};
+
+/* =========================================================
+   LEDGER MODULE — side hustle income/expense tracker + monthly P/L chart
+   ========================================================= */
+
+const monthKey = (y, m) => `${y}-${String(m + 1).padStart(2, "0")}`;
+
+const LedgerModule = {
+  el: null,
+  view: { y: 0, m: 0 },
+
+  init() {
+    this.el = document.getElementById("ledger-module");
+    const now = new Date();
+    this.view = { y: now.getFullYear(), m: now.getMonth() };
+
+    this.el.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const { action, id } = btn.dataset;
+      if (action === "prev-month") {
+        this.view.m--;
+        if (this.view.m < 0) { this.view.m = 11; this.view.y--; }
+        this.render();
+      } else if (action === "next-month") {
+        this.view.m++;
+        if (this.view.m > 11) { this.view.m = 0; this.view.y++; }
+        this.render();
+      } else if (action === "delete-tx") {
+        Store.remove("transactions", id);
+      }
+    });
+
+    this.el.addEventListener("submit", (e) => {
+      if (e.target.id !== "tx-form") return;
+      e.preventDefault();
+      const f = e.target;
+      const amount = parseFloat(f.amount.value);
+      if (!amount || amount <= 0) return;
+      Store.add("transactions", {
+        id: Store.uid("tx"),
+        type: f.type.value,
+        amount,
+        category: f.category.value.trim() || "General",
+        description: f.description.value.trim(),
+        date: f.date.value || todayISO(),
+      });
+      f.reset();
+      f.date.value = todayISO();
+    });
+
+    Store.subscribe("transactions:changed", () => this.render());
+    this.render();
+  },
+
+  totalsFor(key) {
+    let income = 0, expense = 0;
+    for (const tx of Store.state.transactions) {
+      if (!tx.date.startsWith(key)) continue;
+      if (tx.type === "income") income += tx.amount;
+      else expense += tx.amount;
+    }
+    return { income, expense, net: income - expense };
+  },
+
+  render() {
+    const { y, m } = this.view;
+    const cur = Store.state.settings.currency;
+    const key = monthKey(y, m);
+    const monthName = new Date(y, m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const fmt = (n) => `${cur}${n.toFixed(2).replace(/\.00$/, "")}`;
+
+    const { income, expense, net } = this.totalsFor(key);
+
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(y, m - i, 1);
+      months.push({
+        key: monthKey(d.getFullYear(), d.getMonth()),
+        label: d.toLocaleDateString(undefined, { month: "short" }),
+        ...this.totalsFor(monthKey(d.getFullYear(), d.getMonth())),
+      });
+    }
+    const maxVal = Math.max(1, ...months.flatMap((mo) => [mo.income, mo.expense]));
+    const bars = months.map((mo) => {
+      const hIn = Math.round((mo.income / maxVal) * 100);
+      const hEx = Math.round((mo.expense / maxVal) * 100);
+      const isCurrent = mo.key === key;
+      return `
+        <div class="flex-1 flex flex-col items-center gap-1">
+          <div class="w-full h-24 flex items-end justify-center gap-1">
+            <div class="w-3 rounded-t bg-emerald-400/80" style="height:${hIn}%" title="Income ${fmt(mo.income)}"></div>
+            <div class="w-3 rounded-t bg-rose-400/80" style="height:${hEx}%" title="Expenses ${fmt(mo.expense)}"></div>
+          </div>
+          <span class="text-[10px] ${isCurrent ? "text-indigo-300 font-semibold" : "text-slate-500"}">${mo.label}</span>
+          <span class="text-[10px] ${mo.net >= 0 ? "text-emerald-400" : "text-rose-400"}">${mo.net >= 0 ? "+" : "−"}${fmt(Math.abs(mo.net))}</span>
+        </div>`;
+    }).join("");
+
+    const txs = Store.state.transactions
+      .filter((tx) => tx.date.startsWith(key))
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const rows = txs.map((tx) => `
+      <li class="flex items-center gap-3 py-2 group text-sm">
+        <span class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs
+                     ${tx.type === "income" ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}">
+          ${tx.type === "income" ? "↑" : "↓"}
+        </span>
+        <div class="flex-1 min-w-0">
+          <p class="truncate">${escapeHtml(tx.description || tx.category)}</p>
+          <p class="text-[11px] text-slate-500">${escapeHtml(tx.category)} · ${formatDate(tx.date)}</p>
+        </div>
+        <span class="font-medium ${tx.type === "income" ? "text-emerald-300" : "text-rose-300"}">
+          ${tx.type === "income" ? "+" : "−"}${fmt(tx.amount)}
+        </span>
+        <button data-action="delete-tx" data-id="${tx.id}"
+                class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 px-1">✕</button>
+      </li>`).join("");
+
+    this.el.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-slate-100">💰 Hustle Ledger</h2>
+        <div class="flex items-center gap-2 text-sm">
+          <button data-action="prev-month" class="px-2 py-1 rounded hover:bg-slate-800">‹</button>
+          <span class="w-32 text-center text-slate-300">${monthName}</span>
+          <button data-action="next-month" class="px-2 py-1 rounded hover:bg-slate-800">›</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+        <div class="rounded-lg bg-slate-800/60 py-2">
+          <p class="text-[11px] text-slate-500">Income</p>
+          <p class="text-emerald-300 font-semibold">${fmt(income)}</p>
+        </div>
+        <div class="rounded-lg bg-slate-800/60 py-2">
+          <p class="text-[11px] text-slate-500">Expenses</p>
+          <p class="text-rose-300 font-semibold">${fmt(expense)}</p>
+        </div>
+        <div class="rounded-lg bg-slate-800/60 py-2 ${net >= 0 ? "ring-1 ring-emerald-500/30" : "ring-1 ring-rose-500/30"}">
+          <p class="text-[11px] text-slate-500">Net P/L</p>
+          <p class="${net >= 0 ? "text-emerald-300" : "text-rose-300"} font-semibold">${net >= 0 ? "+" : "−"}${fmt(Math.abs(net))}</p>
+        </div>
+      </div>
+
+      <div class="flex gap-1 mb-4 px-1">${bars}</div>
+
+      <ul class="divide-y divide-slate-800 mb-3 max-h-44 overflow-y-auto">
+        ${rows || `<li class="py-3 text-sm text-slate-500">No transactions this month.</li>`}
+      </ul>
+
+      <form id="tx-form" class="grid grid-cols-2 sm:grid-cols-6 gap-2">
+        <select name="type" class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm">
+          <option value="income">＋ Income</option>
+          <option value="expense">− Expense</option>
+        </select>
+        <input name="amount" type="number" step="0.01" min="0.01" placeholder="0.00" required
+               class="bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+        <input name="category" placeholder="Category"
+               class="bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+        <input name="description" placeholder="Description"
+               class="col-span-2 sm:col-span-1 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+        <input name="date" type="date" value="${todayISO()}"
+               class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-300" />
+        <button class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Log</button>
+      </form>`;
+  },
+};
+
+/* =========================================================
+   BRAIN DUMP — rapid capture, tag filter, promote note → task
+   ========================================================= */
+
+const BrainDump = {
+  el: null,
+  filter: "all",
+  selectedTag: null,
+
+  init() {
+    this.el = document.getElementById("notes-module");
+
+    this.el.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const { action, id, tag } = btn.dataset;
+      if (action === "set-filter") {
+        this.filter = tag;
+        this.render();
+      } else if (action === "pick-tag") {
+        this.selectedTag = this.selectedTag === tag ? null : tag;
+        const input = this.el.querySelector("#note-input");
+        const text = input?.value ?? "";
+        this.render();
+        const restored = this.el.querySelector("#note-input");
+        restored.value = text;
+        restored.focus();
+      } else if (action === "promote-note") {
+        const note = Store.state.notes.find((n) => n.id === id);
+        if (!note || note.promoted) return;
+        Store.add("tasks", {
+          id: Store.uid("tk"),
+          title: note.text,
+          energy: "medium",
+          done: false,
+          linkedDeadlineId: null,
+          createdAt: new Date().toISOString(),
+        });
+        Store.update("notes", id, { promoted: true });
+      } else if (action === "delete-note") {
+        Store.remove("notes", id);
+      }
+    });
+
+    this.el.addEventListener("keydown", (e) => {
+      if (e.target.id === "note-input" && e.key === "Enter") {
+        e.preventDefault();
+        this.saveNote();
+      }
+    });
+    this.el.addEventListener("click", (e) => {
+      if (e.target.closest("#note-save")) this.saveNote();
+    });
+
+    Store.subscribe("notes:changed", () => this.render());
+    this.render();
+  },
+
+  saveNote() {
+    const input = this.el.querySelector("#note-input");
+    const text = input.value.trim();
+    if (!text) return;
+    Store.add("notes", {
+      id: Store.uid("nt"),
+      text,
+      tag: this.selectedTag,
+      createdAt: new Date().toISOString(),
+      promoted: false,
+    });
+    this.selectedTag = null;
+    this.el.querySelector("#note-input").focus();
+  },
+
+  relTime(iso) {
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  },
+
+  render() {
+    const filters = [
+      { key: "all", label: "All" },
+      { key: "uni", label: "🎓 Uni" },
+      { key: "hustle", label: "💼 Hustle" },
+    ];
+    const filterChips = filters.map((f) => `
+      <button data-action="set-filter" data-tag="${f.key}"
+              class="px-3 py-1 rounded-full text-xs border transition
+                     ${this.filter === f.key ? "bg-indigo-500/20 border-indigo-400/60 text-indigo-200" : "border-slate-700 text-slate-400 hover:border-slate-500"}">
+        ${f.label}
+      </button>`).join("");
+
+    const tagChips = ["uni", "hustle"].map((t) => `
+      <button data-action="pick-tag" data-tag="${t}" type="button"
+              class="px-2.5 py-1.5 rounded-lg text-xs border transition
+                     ${this.selectedTag === t ? SOURCE[t].badge : "border-slate-700 text-slate-500 hover:border-slate-500"}">
+        ${t === "uni" ? "🎓" : "💼"} ${SOURCE[t].label}
+      </button>`).join("");
+
+    const notes = [...Store.state.notes]
+      .filter((n) => this.filter === "all" || n.tag === this.filter)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    const feed = notes.map((n) => {
+      const s = n.tag ? SOURCE[n.tag] : null;
+      return `
+        <li class="bg-slate-800/50 rounded-xl px-3 py-2.5 group">
+          <p class="text-sm whitespace-pre-wrap break-words">${escapeHtml(n.text)}</p>
+          <div class="flex items-center gap-2 mt-1.5">
+            ${s ? `<span class="text-[10px] px-2 py-0.5 rounded-full ${s.badge}">${s.label}</span>` : ""}
+            <span class="text-[11px] text-slate-500">${this.relTime(n.createdAt)}</span>
+            <span class="flex-1"></span>
+            ${n.promoted
+              ? `<span class="text-[11px] text-emerald-400">✓ tasked</span>`
+              : `<button data-action="promote-note" data-id="${n.id}"
+                         class="opacity-0 group-hover:opacity-100 text-[11px] text-indigo-300 hover:text-indigo-200 border border-indigo-500/40 rounded px-2 py-0.5">→ Task</button>`}
+            <button data-action="delete-note" data-id="${n.id}"
+                    class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 text-sm px-1">✕</button>
+          </div>
+        </li>`;
+    }).join("");
+
+    this.el.innerHTML = `
+      <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+        <h2 class="font-semibold text-slate-100">📝 Brain Dump</h2>
+        <div class="flex gap-1.5">${filterChips}</div>
+      </div>
+
+      <div class="flex gap-2 mb-3">
+        <input id="note-input" placeholder="Dump an idea, hit Enter…"
+               class="flex-1 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+        ${tagChips}
+        <button id="note-save" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Save</button>
+      </div>
+
+      <ul class="space-y-2 max-h-80 overflow-y-auto pr-1">
+        ${feed || `<li class="text-sm text-slate-500 py-2">Empty head? Lucky you.</li>`}
+      </ul>`;
+  },
+};
+
+/* =========================================================
+   GYM MODULE — full workout logger (exercises/sets/reps/weight) + per-lift progress chart
+   ========================================================= */
+
+const GymModule = {
+  el: null,
+  draft: null,
+  selectedExercise: null,
+
+  init() {
+    this.el = document.getElementById("gym-module");
+    this.resetDraft();
+
+    this.el.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const { action, idx, sidx, id, name } = btn.dataset;
+      if (action === "draft-add-exercise") {
+        this.draft.exercises.push({ name: "", sets: [{ reps: "", weight: "" }] });
+        this.render();
+      } else if (action === "draft-remove-exercise") {
+        this.draft.exercises.splice(Number(idx), 1);
+        this.render();
+      } else if (action === "draft-add-set") {
+        this.draft.exercises[Number(idx)].sets.push({ reps: "", weight: "" });
+        this.render();
+      } else if (action === "draft-remove-set") {
+        this.draft.exercises[Number(idx)].sets.splice(Number(sidx), 1);
+        this.render();
+      } else if (action === "save-workout") {
+        this.saveWorkout();
+      } else if (action === "delete-workout") {
+        Store.remove("workouts", id);
+      } else if (action === "select-progress-exercise") {
+        this.selectedExercise = name;
+        this.render();
+      }
+    });
+
+    this.el.addEventListener("input", (e) => {
+      const t = e.target;
+      if (t.dataset.field === "draft-date") {
+        this.draft.date = t.value;
+      } else if (t.dataset.field === "draft-label") {
+        this.draft.label = t.value;
+      } else if (t.dataset.field === "ex-name") {
+        this.draft.exercises[Number(t.dataset.exidx)].name = t.value;
+      } else if (t.dataset.field === "set-reps") {
+        this.draft.exercises[Number(t.dataset.exidx)].sets[Number(t.dataset.setidx)].reps = t.value;
+      } else if (t.dataset.field === "set-weight") {
+        this.draft.exercises[Number(t.dataset.exidx)].sets[Number(t.dataset.setidx)].weight = t.value;
+      }
+    });
+
+    Store.subscribe("workouts:changed", () => this.render());
+    this.render();
+  },
+
+  resetDraft() {
+    this.draft = {
+      date: todayISO(),
+      label: "",
+      exercises: [{ name: "", sets: [{ reps: "", weight: "" }] }],
+    };
+  },
+
+  saveWorkout() {
+    const exercises = this.draft.exercises
+      .map((ex) => ({
+        name: ex.name.trim(),
+        sets: ex.sets
+          .map((s) => ({ reps: parseFloat(s.reps), weight: parseFloat(s.weight) }))
+          .filter((s) => s.reps > 0 && s.weight >= 0 && !isNaN(s.reps) && !isNaN(s.weight)),
+      }))
+      .filter((ex) => ex.name && ex.sets.length > 0);
+
+    if (exercises.length === 0) return;
+
+    Store.add("workouts", {
+      id: Store.uid("wo"),
+      date: this.draft.date || todayISO(),
+      label: this.draft.label.trim(),
+      exercises,
+    });
+    this.resetDraft();
+  },
+
+  allExerciseNames() {
+    const names = new Set();
+    Store.state.workouts.forEach((w) => w.exercises.forEach((ex) => names.add(ex.name)));
+    return [...names].sort((a, b) => a.localeCompare(b));
+  },
+
+  render() {
+    const draftHtml = this.draft.exercises.map((ex, exi) => `
+      <div class="bg-slate-800/60 rounded-lg p-2.5 space-y-2">
+        <div class="flex items-center gap-2">
+          <input data-field="ex-name" data-exidx="${exi}" value="${escapeHtml(ex.name)}" placeholder="Exercise name…"
+                 class="flex-1 bg-slate-900/60 border border-slate-700 rounded px-2 py-1.5 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+          <button data-action="draft-remove-exercise" data-idx="${exi}" class="text-slate-500 hover:text-rose-400 text-sm px-1">✕</button>
+        </div>
+        <div class="space-y-1.5">
+          ${ex.sets.map((s, si) => `
+            <div class="flex items-center gap-2 pl-2">
+              <span class="text-[11px] text-slate-500 w-10">Set ${si + 1}</span>
+              <input data-field="set-reps" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" value="${s.reps}" placeholder="reps"
+                     class="w-16 bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-xs placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+              <span class="text-slate-600 text-xs">×</span>
+              <input data-field="set-weight" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" step="0.5" value="${s.weight}" placeholder="kg"
+                     class="w-16 bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-xs placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+              <button data-action="draft-remove-set" data-idx="${exi}" data-sidx="${si}" class="text-slate-600 hover:text-rose-400 text-xs px-1">✕</button>
+            </div>`).join("")}
+          <button data-action="draft-add-set" data-idx="${exi}" class="text-[11px] text-indigo-300 hover:text-indigo-200 pl-2">+ Add set</button>
+        </div>
+      </div>`).join("");
+
+    const sortedWorkouts = [...Store.state.workouts].sort((a, b) => b.date.localeCompare(a.date));
+    const historyHtml = sortedWorkouts.map((w) => `
+      <li class="bg-slate-800/50 rounded-xl px-3 py-2.5 group">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-sm font-medium">${escapeHtml(w.label || "Workout")}</span>
+          <span class="text-[11px] text-slate-500">${formatDate(w.date)}</span>
+          <span class="flex-1"></span>
+          <button data-action="delete-workout" data-id="${w.id}"
+                  class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 text-sm px-1">✕</button>
+        </div>
+        <ul class="text-xs text-slate-400 space-y-0.5">
+          ${w.exercises.map((ex) => `
+            <li>${escapeHtml(ex.name)}: ${ex.sets.map((s) => `${s.reps}×${s.weight}kg`).join(", ")}</li>
+          `).join("")}
+        </ul>
+      </li>`).join("");
+
+    const exerciseNames = this.allExerciseNames();
+    if (!this.selectedExercise || !exerciseNames.includes(this.selectedExercise)) {
+      this.selectedExercise = exerciseNames[exerciseNames.length - 1] ?? null;
+    }
+
+    let progressHtml = `<p class="text-sm text-slate-500">Log a workout to see progress here.</p>`;
+    if (this.selectedExercise) {
+      const sessions = sortedWorkouts
+        .slice()
+        .reverse()
+        .map((w) => {
+          const ex = w.exercises.find((e) => e.name === this.selectedExercise);
+          if (!ex) return null;
+          const maxWeight = Math.max(...ex.sets.map((s) => s.weight));
+          return { date: w.date, maxWeight };
+        })
+        .filter(Boolean);
+
+      const maxVal = Math.max(1, ...sessions.map((s) => s.maxWeight));
+      const bars = sessions.map((s) => {
+        const h = Math.round((s.maxWeight / maxVal) * 100);
+        return `
+          <div class="flex-1 flex flex-col items-center gap-1 min-w-8">
+            <div class="w-full h-24 flex items-end justify-center">
+              <div class="w-4 rounded-t bg-indigo-400/80" style="height:${h}%" title="${s.maxWeight}kg on ${formatDate(s.date)}"></div>
+            </div>
+            <span class="text-[10px] text-slate-500">${formatDate(s.date)}</span>
+            <span class="text-[10px] text-indigo-300">${s.maxWeight}kg</span>
+          </div>`;
+      }).join("");
+
+      const exerciseTabs = exerciseNames.map((name) => `
+        <button data-action="select-progress-exercise" data-name="${escapeHtml(name)}"
+                class="px-2.5 py-1 rounded-full text-xs border transition
+                       ${name === this.selectedExercise ? "bg-indigo-500/20 border-indigo-400/60 text-indigo-200" : "border-slate-700 text-slate-400 hover:border-slate-500"}">
+          ${escapeHtml(name)}
+        </button>`).join("");
+
+      progressHtml = `
+        <div class="flex flex-wrap gap-1.5 mb-3">${exerciseTabs}</div>
+        <div class="flex gap-1 overflow-x-auto pb-1">${bars || `<p class="text-sm text-slate-500">No sessions logged for this exercise yet.</p>`}</div>`;
+    }
+
+    this.el.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-slate-100">🏋️ Gym Log</h2>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-300 mb-2">Log a workout</h3>
+          <div class="flex gap-2 mb-2">
+            <input data-field="draft-date" type="date" value="${this.draft.date}"
+                   class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-300" />
+            <input data-field="draft-label" value="${escapeHtml(this.draft.label)}" placeholder="Session label (e.g. Push Day)"
+                   class="flex-1 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+          </div>
+          <div class="space-y-2 mb-2">${draftHtml}</div>
+          <div class="flex items-center gap-2">
+            <button data-action="draft-add-exercise" class="text-xs text-indigo-300 hover:text-indigo-200 border border-indigo-500/40 rounded-lg px-3 py-1.5">+ Add exercise</button>
+            <span class="flex-1"></span>
+            <button data-action="save-workout" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Save Workout</button>
+          </div>
+
+          <h3 class="text-sm font-semibold text-slate-300 mt-4 mb-2">History</h3>
+          <ul class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            ${historyHtml || `<li class="text-sm text-slate-500 py-2">No workouts logged yet.</li>`}
+          </ul>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-semibold text-slate-300 mb-2">Progress</h3>
+          ${progressHtml}
+        </div>
+      </div>`;
+  },
+};
+
+/* =========================================================
+   APP BOOTSTRAP — load store, seed first run, init all modules
+   ========================================================= */
+
+function seedDemoData() {
+  const t = new Date();
+  const iso = (offsetDays) => {
+    const d = new Date(t.getFullYear(), t.getMonth(), t.getDate() + offsetDays);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  Store.state.deadlines = [
+    { id: Store.uid("dl"), title: "CS201 Assignment 3", source: "uni", dueDate: iso(8), done: false, notes: "" },
+    { id: Store.uid("dl"), title: "Logo delivery — Café Verde", source: "hustle", dueDate: iso(4), done: false, notes: "" },
+    { id: Store.uid("dl"), title: "Stats quiz", source: "uni", dueDate: iso(2), done: false, notes: "" },
+  ];
+  Store.state.tasks = [
+    { id: Store.uid("tk"), title: "Draft essay outline", energy: "high", done: false, linkedDeadlineId: Store.state.deadlines[0].id, createdAt: new Date().toISOString() },
+    { id: Store.uid("tk"), title: "Reply to client emails", energy: "medium", done: false, linkedDeadlineId: null, createdAt: new Date().toISOString() },
+    { id: Store.uid("tk"), title: "Organize desktop files", energy: "low", done: false, linkedDeadlineId: null, createdAt: new Date().toISOString() },
+  ];
+  Store.state.transactions = [
+    { id: Store.uid("tx"), type: "income", amount: 250, category: "Design work", description: "Café Verde deposit", date: iso(-2) },
+    { id: Store.uid("tx"), type: "expense", amount: 12.99, category: "Software", description: "Figma monthly", date: iso(-6) },
+  ];
+  Store.state.notes = [
+    { id: Store.uid("nt"), text: "Idea: sell Notion templates for exam revision", tag: "hustle", createdAt: new Date().toISOString(), promoted: false },
+  ];
+  Store.state.workouts = [
+    { id: Store.uid("wo"), date: iso(-4), label: "Push Day", exercises: [
+      { name: "Bench Press", sets: [{ reps: 10, weight: 60 }, { reps: 8, weight: 65 }, { reps: 6, weight: 70 }] },
+      { name: "Overhead Press", sets: [{ reps: 10, weight: 30 }] },
+    ]},
+    { id: Store.uid("wo"), date: iso(-1), label: "Push Day", exercises: [
+      { name: "Bench Press", sets: [{ reps: 10, weight: 62.5 }, { reps: 8, weight: 67.5 }, { reps: 5, weight: 72.5 }] },
+    ]},
+  ];
+  Store.save();
+}
+
+Store.load();
+if (Store.isFirstRun) seedDemoData();
+
+document.getElementById("header-date").textContent =
+  new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+[CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule].forEach((m) => m.init());
+
+document.getElementById("quick-add").addEventListener("click", () => {
+  document.getElementById("notes-module").scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => document.getElementById("note-input")?.focus(), 350);
+});
+
+document.querySelectorAll("[data-nav]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.getElementById(btn.dataset.nav)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+});
+
+})();
+</script>
+</body>
+</html>

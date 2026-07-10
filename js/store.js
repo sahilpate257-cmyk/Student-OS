@@ -23,6 +23,7 @@ function defaultState() {
     transactions: [],
     notes: [],
     workouts: [],
+    holdings: [],
   };
 }
 
@@ -64,7 +65,7 @@ export const Store = {
     const { updatedAt, ...rest } = remoteState;
     this.state = { ...defaultState(), ...rest };
     localStorage.setItem(KEY, JSON.stringify(this.state));
-    ["deadlines", "tasks", "transactions", "notes", "workouts"].forEach((c) => this.emit(`${c}:changed`));
+    ["deadlines", "tasks", "transactions", "notes", "workouts", "holdings"].forEach((c) => this.emit(`${c}:changed`));
     this.emit("settings:changed");
   },
 

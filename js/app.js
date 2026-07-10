@@ -6,6 +6,7 @@ import { EnergyRanker } from "./energy.js";
 import { LedgerModule } from "./ledger.js";
 import { BrainDump } from "./notes.js";
 import { GymModule } from "./gym.js";
+import { PortfolioModule } from "./portfolio.js";
 
 function seedDemoData() {
   const t = new Date();
@@ -46,7 +47,7 @@ function bootstrapApp() {
   document.getElementById("header-date").textContent =
     new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-  [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule].forEach((m) => m.init());
+  [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule, PortfolioModule].forEach((m) => m.init());
 
   // header quick-add jumps straight to brain dump input
   document.getElementById("quick-add").addEventListener("click", () => {

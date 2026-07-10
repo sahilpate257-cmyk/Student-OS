@@ -2,6 +2,18 @@
 
 const KEY = "student_os_v1";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyDSUuW6EdJ21CbECrvYbwM-ZmOWFLvkPVo",
+  authDomain: "student-os-bae97.firebaseapp.com",
+  projectId: "student-os-bae97",
+  storageBucket: "student-os-bae97.firebasestorage.app",
+  messagingSenderId: "756152469935",
+  appId: "1:756152469935:web:83fdfba604eb3bc43a875a",
+};
+firebase.initializeApp(firebaseConfig);
+export const auth = firebase.auth();
+export const db = firebase.firestore();
+
 function defaultState() {
   return {
     version: 1,
@@ -18,6 +30,7 @@ export const Store = {
   state: defaultState(),
   _listeners: {},
   isFirstRun: false,
+  _uid: null,
 
   load() {
     try {
@@ -34,6 +47,25 @@ export const Store = {
 
   save() {
     localStorage.setItem(KEY, JSON.stringify(this.state));
+    this.pushToCloud();
+  },
+
+  pushToCloud() {
+    if (!this._uid) return;
+    db.collection("users").doc(this._uid).set(
+      { ...this.state, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { merge: true }
+    ).catch((e) => console.warn("Cloud sync failed", e));
+  },
+
+  // Applied when a Firestore snapshot arrives (this device's own write or another device's).
+  // Deliberately does not call save()/pushToCloud() to avoid a write feedback loop.
+  applyRemote(remoteState) {
+    const { updatedAt, ...rest } = remoteState;
+    this.state = { ...defaultState(), ...rest };
+    localStorage.setItem(KEY, JSON.stringify(this.state));
+    ["deadlines", "tasks", "transactions", "notes", "workouts"].forEach((c) => this.emit(`${c}:changed`));
+    this.emit("settings:changed");
   },
 
   subscribe(event, fn) {

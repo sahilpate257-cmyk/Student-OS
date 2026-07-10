@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Student OS — Personal Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
@@ -14,10 +17,36 @@
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-screen antialiased">
 
+  <!-- auth overlay: shown until signed in -->
+  <div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4">
+    <div class="w-full max-w-sm bg-slate-900/80 border border-slate-800 rounded-2xl p-6">
+      <h1 class="font-bold text-xl mb-1">⚡ Student<span class="text-indigo-400">OS</span></h1>
+      <p class="text-sm text-slate-400 mb-5">Sign in to sync across your devices.</p>
+      <form id="auth-form" class="space-y-3">
+        <input id="auth-email" type="email" required placeholder="Email" autocomplete="email"
+               class="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+        <input id="auth-password" type="password" required minlength="6" placeholder="Password (6+ characters)" autocomplete="current-password"
+               class="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+        <p id="auth-error" class="text-xs text-rose-400 hidden"></p>
+        <div class="flex gap-2 pt-1">
+          <button type="submit" data-mode="login"
+                  class="flex-1 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Log In</button>
+          <button type="submit" data-mode="signup"
+                  class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg px-4 py-2 text-sm font-medium">Sign Up</button>
+        </div>
+      </form>
+      <p id="auth-status" class="text-xs text-slate-500 mt-3"></p>
+    </div>
+  </div>
+
+  <div id="app-shell" class="hidden">
   <header class="sticky top-0 z-20 backdrop-blur bg-slate-950/80 border-b border-slate-800">
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 py-3">
       <h1 class="font-bold text-lg tracking-tight">⚡ Student<span class="text-indigo-400">OS</span></h1>
       <span id="header-date" class="text-sm text-slate-400 hidden sm:block"></span>
+      <span class="flex-1"></span>
+      <button id="sign-out"
+              class="text-xs text-slate-500 hover:text-rose-400 border border-slate-700 rounded-lg px-3 py-1.5">Sign out</button>
       <button id="quick-add"
               class="bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-medium rounded-lg px-3.5 py-1.5">
         ＋ Brain Dump
@@ -52,6 +81,7 @@
       <button data-nav="gym-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">🏋️</span>Gym</button>
     </div>
   </nav>
+  </div>
 
 <script>
 (() => {
@@ -62,6 +92,18 @@
    ========================================================= */
 
 const KEY = "student_os_v1";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDSUuW6EdJ21CbECrvYbwM-ZmOWFLvkPVo",
+  authDomain: "student-os-bae97.firebaseapp.com",
+  projectId: "student-os-bae97",
+  storageBucket: "student-os-bae97.firebasestorage.app",
+  messagingSenderId: "756152469935",
+  appId: "1:756152469935:web:83fdfba604eb3bc43a875a",
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 function defaultState() {
   return {
@@ -79,6 +121,7 @@ const Store = {
   state: defaultState(),
   _listeners: {},
   isFirstRun: false,
+  _uid: null,
 
   load() {
     try {
@@ -95,6 +138,25 @@ const Store = {
 
   save() {
     localStorage.setItem(KEY, JSON.stringify(this.state));
+    this.pushToCloud();
+  },
+
+  pushToCloud() {
+    if (!this._uid) return;
+    db.collection("users").doc(this._uid).set(
+      { ...this.state, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+      { merge: true }
+    ).catch((e) => console.warn("Cloud sync failed", e));
+  },
+
+  // Applied when a Firestore snapshot arrives (from this device's own write or another device).
+  // Deliberately does not call save()/pushToCloud() to avoid a write feedback loop.
+  applyRemote(remoteState) {
+    const { updatedAt, ...rest } = remoteState;
+    this.state = { ...defaultState(), ...rest };
+    localStorage.setItem(KEY, JSON.stringify(this.state));
+    ["deadlines", "tasks", "transactions", "notes", "workouts"].forEach((c) => this.emit(`${c}:changed`));
+    this.emit("settings:changed");
   },
 
   subscribe(event, fn) {
@@ -1000,24 +1062,102 @@ function seedDemoData() {
   Store.save();
 }
 
-Store.load();
-if (Store.isFirstRun) seedDemoData();
+/* =========================================================
+   AUTH GATE — email/password sign-in, then bootstrap + cloud sync
+   ========================================================= */
 
-document.getElementById("header-date").textContent =
-  new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+const AuthGate = {
+  started: false,
 
-[CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule].forEach((m) => m.init());
+  init() {
+    const shell = document.getElementById("app-shell");
+    const overlay = document.getElementById("auth-overlay");
+    const authForm = document.getElementById("auth-form");
+    const errorEl = document.getElementById("auth-error");
+    const statusEl = document.getElementById("auth-status");
+    const signOutBtn = document.getElementById("sign-out");
 
-document.getElementById("quick-add").addEventListener("click", () => {
-  document.getElementById("notes-module").scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(() => document.getElementById("note-input")?.focus(), 350);
-});
+    authForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.classList.add("hidden");
+      const mode = e.submitter?.dataset.mode || "login";
+      const email = document.getElementById("auth-email").value.trim();
+      const password = document.getElementById("auth-password").value;
+      statusEl.textContent = mode === "signup" ? "Creating account…" : "Signing in…";
+      try {
+        if (mode === "signup") {
+          await auth.createUserWithEmailAndPassword(email, password);
+        } else {
+          await auth.signInWithEmailAndPassword(email, password);
+        }
+      } catch (err) {
+        statusEl.textContent = "";
+        errorEl.textContent = err.message;
+        errorEl.classList.remove("hidden");
+      }
+    });
 
-document.querySelectorAll("[data-nav]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.getElementById(btn.dataset.nav)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-});
+    signOutBtn.addEventListener("click", () => auth.signOut());
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        this.started = false;
+        Store._uid = null;
+        overlay.classList.remove("hidden");
+        shell.classList.add("hidden");
+        return;
+      }
+      overlay.classList.add("hidden");
+      shell.classList.remove("hidden");
+      if (this.started) return; // avoid double-init on token refresh
+      this.started = true;
+      await this.bootstrap(user.uid);
+    });
+  },
+
+  async bootstrap(uid) {
+    Store._uid = uid;
+    const docRef = db.collection("users").doc(uid);
+
+    try {
+      const snap = await docRef.get();
+      if (snap.exists) {
+        Store.applyRemote(snap.data());
+      } else {
+        Store.load();
+        if (Store.isFirstRun) seedDemoData();
+        else Store.pushToCloud();
+      }
+    } catch (e) {
+      console.warn("Could not reach cloud, using local data", e);
+      Store.load();
+      if (Store.isFirstRun) seedDemoData();
+    }
+
+    // real-time sync: pick up changes made from any other signed-in device
+    docRef.onSnapshot((snap) => {
+      if (snap.exists) Store.applyRemote(snap.data());
+    });
+
+    document.getElementById("header-date").textContent =
+      new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+    [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule].forEach((m) => m.init());
+
+    document.getElementById("quick-add").addEventListener("click", () => {
+      document.getElementById("notes-module").scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => document.getElementById("note-input")?.focus(), 350);
+    });
+
+    document.querySelectorAll("[data-nav]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.getElementById(btn.dataset.nav)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  },
+};
+
+AuthGate.init();
 
 })();
 </script>

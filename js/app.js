@@ -1,6 +1,6 @@
-// app.js — bootstrap: load store, seed first run, init all modules
+// app.js — bootstrap: auth gate, load store, seed first run, init all modules
 
-import { Store, todayISO } from "./store.js";
+import { Store, auth, db, todayISO } from "./store.js";
 import { CalendarModule } from "./calendar.js";
 import { EnergyRanker } from "./energy.js";
 import { LedgerModule } from "./ledger.js";
@@ -42,23 +42,101 @@ function seedDemoData() {
   Store.save();
 }
 
-Store.load();
-if (Store.isFirstRun) seedDemoData();
+function bootstrapApp() {
+  document.getElementById("header-date").textContent =
+    new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
-document.getElementById("header-date").textContent =
-  new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule].forEach((m) => m.init());
 
-[CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule].forEach((m) => m.init());
-
-// header quick-add jumps straight to brain dump input
-document.getElementById("quick-add").addEventListener("click", () => {
-  document.getElementById("notes-module").scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(() => document.getElementById("note-input")?.focus(), 350);
-});
-
-// mobile bottom nav
-document.querySelectorAll("[data-nav]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.getElementById(btn.dataset.nav)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // header quick-add jumps straight to brain dump input
+  document.getElementById("quick-add").addEventListener("click", () => {
+    document.getElementById("notes-module").scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => document.getElementById("note-input")?.focus(), 350);
   });
-});
+
+  // mobile bottom nav
+  document.querySelectorAll("[data-nav]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.getElementById(btn.dataset.nav)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+const AuthGate = {
+  started: false,
+
+  init() {
+    const shell = document.getElementById("app-shell");
+    const overlay = document.getElementById("auth-overlay");
+    const authForm = document.getElementById("auth-form");
+    const errorEl = document.getElementById("auth-error");
+    const statusEl = document.getElementById("auth-status");
+    const signOutBtn = document.getElementById("sign-out");
+
+    authForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.classList.add("hidden");
+      const mode = e.submitter?.dataset.mode || "login";
+      const email = document.getElementById("auth-email").value.trim();
+      const password = document.getElementById("auth-password").value;
+      statusEl.textContent = mode === "signup" ? "Creating account…" : "Signing in…";
+      try {
+        if (mode === "signup") {
+          await auth.createUserWithEmailAndPassword(email, password);
+        } else {
+          await auth.signInWithEmailAndPassword(email, password);
+        }
+      } catch (err) {
+        statusEl.textContent = "";
+        errorEl.textContent = err.message;
+        errorEl.classList.remove("hidden");
+      }
+    });
+
+    signOutBtn.addEventListener("click", () => auth.signOut());
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        this.started = false;
+        Store._uid = null;
+        overlay.classList.remove("hidden");
+        shell.classList.add("hidden");
+        return;
+      }
+      overlay.classList.add("hidden");
+      shell.classList.remove("hidden");
+      if (this.started) return; // avoid double-init on token refresh
+      this.started = true;
+      await this.bootstrap(user.uid);
+    });
+  },
+
+  async bootstrap(uid) {
+    Store._uid = uid;
+    const docRef = db.collection("users").doc(uid);
+
+    try {
+      const snap = await docRef.get();
+      if (snap.exists) {
+        Store.applyRemote(snap.data());
+      } else {
+        Store.load();
+        if (Store.isFirstRun) seedDemoData();
+        else Store.pushToCloud();
+      }
+    } catch (e) {
+      console.warn("Could not reach cloud, using local data", e);
+      Store.load();
+      if (Store.isFirstRun) seedDemoData();
+    }
+
+    // real-time sync: pick up changes made from any other signed-in device
+    docRef.onSnapshot((snap) => {
+      if (snap.exists) Store.applyRemote(snap.data());
+    });
+
+    bootstrapApp();
+  },
+};
+
+AuthGate.init();

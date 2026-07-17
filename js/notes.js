@@ -1,6 +1,7 @@
 // notes.js — BrainDump: rapid capture, tag filter, promote note → task
 
 import { Store, escapeHtml, SOURCE } from "./store.js";
+import { icon } from "./icons.js";
 
 export const BrainDump = {
   el: null,
@@ -84,21 +85,15 @@ export const BrainDump = {
   render() {
     const filters = [
       { key: "all", label: "All" },
-      { key: "uni", label: "🎓 Uni" },
-      { key: "hustle", label: "💼 Hustle" },
+      { key: "uni", label: "Uni" },
+      { key: "hustle", label: "Hustle" },
     ];
     const filterChips = filters.map((f) => `
-      <button data-action="set-filter" data-tag="${f.key}"
-              class="px-3 py-1 rounded-full text-xs border transition
-                     ${this.filter === f.key ? "bg-indigo-500/20 border-indigo-400/60 text-indigo-200" : "border-slate-700 text-slate-400 hover:border-slate-500"}">
-        ${f.label}
-      </button>`).join("");
+      <button data-action="set-filter" data-tag="${f.key}" class="chip ${this.filter === f.key ? "chip-on" : ""}">${f.label}</button>`).join("");
 
     const tagChips = ["uni", "hustle"].map((t) => `
-      <button data-action="pick-tag" data-tag="${t}" type="button"
-              class="px-2.5 py-1.5 rounded-lg text-xs border transition
-                     ${this.selectedTag === t ? SOURCE[t].badge : "border-slate-700 text-slate-500 hover:border-slate-500"}">
-        ${t === "uni" ? "🎓" : "💼"} ${SOURCE[t].label}
+      <button data-action="pick-tag" data-tag="${t}" type="button" class="chip ${this.selectedTag === t ? "chip-on" : ""}">
+        <span class="w-2 h-2 rounded-full" style="background:${SOURCE[t].dot}"></span>${SOURCE[t].label}
       </button>`).join("");
 
     const notes = [...Store.state.notes]
@@ -108,37 +103,37 @@ export const BrainDump = {
     const feed = notes.map((n) => {
       const s = n.tag ? SOURCE[n.tag] : null;
       return `
-        <li class="bg-slate-800/50 rounded-xl px-3 py-2.5 group">
-          <p class="text-sm whitespace-pre-wrap break-words">${escapeHtml(n.text)}</p>
-          <div class="flex items-center gap-2 mt-1.5">
-            ${s ? `<span class="text-[10px] px-2 py-0.5 rounded-full ${s.badge}">${s.label}</span>` : ""}
-            <span class="text-[11px] text-slate-500">${this.relTime(n.createdAt)}</span>
+        <li class="well px-3.5 py-3 group">
+          <p class="text-[13.5px] whitespace-pre-wrap break-words">${escapeHtml(n.text)}</p>
+          <div class="flex items-center gap-2 mt-2">
+            ${s ? `<span class="${s.tag}">${s.label}</span>` : ""}
+            <span class="text-[11px] faint">${this.relTime(n.createdAt)}</span>
             <span class="flex-1"></span>
             ${n.promoted
-              ? `<span class="text-[11px] text-emerald-400">✓ tasked</span>`
-              : `<button data-action="promote-note" data-id="${n.id}"
-                         class="opacity-0 group-hover:opacity-100 text-[11px] text-indigo-300 hover:text-indigo-200 border border-indigo-500/40 rounded px-2 py-0.5">→ Task</button>`}
-            <button data-action="delete-note" data-id="${n.id}"
-                    class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 text-sm px-1">✕</button>
+              ? `<span class="text-[11px] pos flex items-center gap-1">${icon("check", 12)} Tasked</span>`
+              : `<button data-action="promote-note" data-id="${n.id}" class="reveal btn btn-ghost btn-sm">${icon("plus", 13)} Task</button>`}
+            <button data-action="delete-note" data-id="${n.id}" class="reveal btn-icon" style="width:26px;height:26px">${icon("x", 14)}</button>
           </div>
         </li>`;
     }).join("");
 
     this.el.innerHTML = `
-      <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-        <h2 class="font-semibold text-slate-100">📝 Brain Dump</h2>
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <div class="flex items-center gap-2.5">
+          <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("notebook", 18)}</span>
+          <h2 class="sect-title">Notes</h2>
+        </div>
         <div class="flex gap-1.5">${filterChips}</div>
       </div>
 
-      <div class="flex gap-2 mb-3">
-        <input id="note-input" placeholder="Dump an idea, hit Enter…"
-               class="flex-1 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+      <div class="flex flex-wrap gap-2 mb-4">
+        <input id="note-input" placeholder="Capture an idea, press Enter…" class="input flex-1" style="min-width:160px" />
         ${tagChips}
-        <button id="note-save" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Save</button>
+        <button id="note-save" class="btn btn-primary">Save</button>
       </div>
 
       <ul class="space-y-2 max-h-80 overflow-y-auto pr-1">
-        ${feed || `<li class="text-sm text-slate-500 py-2">Empty head? Lucky you.</li>`}
+        ${feed || `<li class="text-[13px] faint py-3 text-center">Nothing captured yet.</li>`}
       </ul>`;
   },
 };

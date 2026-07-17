@@ -1,6 +1,7 @@
-// ledger.js — LedgerModule: side hustle income/expense tracker + monthly P/L chart
+// ledger.js — LedgerModule: multi-stream income/expense tracker + monthly cashflow chart
 
 import { Store, todayISO, escapeHtml, formatDate } from "./store.js";
+import { icon } from "./icons.js";
 
 const monthKey = (y, m) => `${y}-${String(m + 1).padStart(2, "0")}`;
 
@@ -70,7 +71,7 @@ export const LedgerModule = {
     const cur = Store.state.settings.currency;
     const key = monthKey(y, m);
     const monthName = new Date(y, m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    const fmt = (n) => `${cur}${n.toFixed(2).replace(/\.00$/, "")}`;
+    const fmt = (n) => `${cur}${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
     const { income, expense, net } = this.totalsFor(key);
 
@@ -90,88 +91,89 @@ export const LedgerModule = {
       const hEx = Math.round((mo.expense / maxVal) * 100);
       const isCurrent = mo.key === key;
       return `
-        <div class="flex-1 flex flex-col items-center gap-1">
-          <div class="w-full h-24 flex items-end justify-center gap-1">
-            <div class="w-3 rounded-t bg-emerald-400/80" style="height:${hIn}%" title="Income ${fmt(mo.income)}"></div>
-            <div class="w-3 rounded-t bg-rose-400/80" style="height:${hEx}%" title="Expenses ${fmt(mo.expense)}"></div>
+        <div class="flex-1 flex flex-col items-center gap-2">
+          <div class="w-full h-20 flex items-end justify-center gap-1.5">
+            <div class="w-2.5 rounded-t-[3px]" style="height:${Math.max(hIn, 2)}%;background:var(--pos)" title="Income ${fmt(mo.income)}"></div>
+            <div class="w-2.5 rounded-t-[3px]" style="height:${Math.max(hEx, 2)}%;background:var(--neg);opacity:.85" title="Expenses ${fmt(mo.expense)}"></div>
           </div>
-          <span class="text-[10px] ${isCurrent ? "text-indigo-300 font-semibold" : "text-slate-500"}">${mo.label}</span>
-          <span class="text-[10px] ${mo.net >= 0 ? "text-emerald-400" : "text-rose-400"}">${mo.net >= 0 ? "+" : "−"}${fmt(Math.abs(mo.net))}</span>
+          <span class="text-[10.5px] num ${isCurrent ? "font-semibold" : "faint"}" ${isCurrent ? 'style="color:var(--ink)"' : ""}>${mo.label}</span>
         </div>`;
     }).join("");
 
     const txs = Store.state.transactions
       .filter((tx) => tx.date.startsWith(key))
       .sort((a, b) => b.date.localeCompare(a.date));
-    const rows = txs.map((tx) => `
-      <li class="flex items-center gap-3 py-2 group text-sm">
-        <span class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs
-                     ${tx.type === "income" ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}">
-          ${tx.type === "income" ? "↑" : "↓"}
+    const rows = txs.map((tx) => {
+      const inc = tx.type === "income";
+      return `
+      <li class="flex items-center gap-3 py-2.5 group divide-row">
+        <span class="grid place-items-center w-8 h-8 shrink-0 rounded-full"
+              style="background:${inc ? "var(--pos-soft)" : "var(--neg-soft)"};color:${inc ? "var(--pos)" : "var(--neg)"}">
+          ${icon(inc ? "arrowUp" : "arrowDown", 15)}
         </span>
         <div class="flex-1 min-w-0">
-          <p class="truncate">${escapeHtml(tx.description || tx.category)}</p>
-          <p class="text-[11px] text-slate-500">${escapeHtml(tx.category)} · ${formatDate(tx.date)}</p>
+          <p class="text-[13.5px] font-medium truncate">${escapeHtml(tx.description || tx.category)}</p>
+          <p class="text-[11.5px] faint">${escapeHtml(tx.category)} · ${formatDate(tx.date)}</p>
         </div>
-        <span class="font-medium ${tx.type === "income" ? "text-emerald-300" : "text-rose-300"}">
-          ${tx.type === "income" ? "+" : "−"}${fmt(tx.amount)}
-        </span>
-        <button data-action="delete-tx" data-id="${tx.id}"
-                class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 px-1">✕</button>
-      </li>`).join("");
+        <span class="text-[13.5px] font-semibold num ${inc ? "pos" : "neg"}">${inc ? "+" : "−"}${fmt(tx.amount)}</span>
+        <button data-action="delete-tx" data-id="${tx.id}" class="reveal btn-icon" style="width:28px;height:28px">${icon("x", 15)}</button>
+      </li>`;
+    }).join("");
 
     const currencyToggle = ["£", "$"].map((c) => `
       <button data-action="set-currency" data-currency="${c}"
-              class="w-7 h-7 rounded text-sm font-medium ${cur === c ? "bg-indigo-500/20 text-indigo-300 border border-indigo-400/60" : "text-slate-500 hover:text-slate-300 border border-transparent"}">
-        ${c}
-      </button>`).join("");
+              class="w-7 h-7 rounded-md text-[13px] font-semibold transition ${cur === c ? "" : "faint"}"
+              style="${cur === c ? "background:var(--ink);color:#FBFAF6" : ""}">${c}</button>`).join("");
 
     this.el.innerHTML = `
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-semibold text-slate-100">💰 Hustle Ledger</h2>
-        <div class="flex items-center gap-2 text-sm">
-          <div class="flex items-center gap-0.5 mr-1">${currencyToggle}</div>
-          <button data-action="prev-month" class="px-2 py-1 rounded hover:bg-slate-800">‹</button>
-          <span class="w-32 text-center text-slate-300">${monthName}</span>
-          <button data-action="next-month" class="px-2 py-1 rounded hover:bg-slate-800">›</button>
+      <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div class="flex items-center gap-2.5">
+          <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("wallet", 18)}</span>
+          <div>
+            <h2 class="sect-title leading-tight">Cashflow</h2>
+            <p class="text-[11.5px] faint">${monthName}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-0.5 p-0.5 rounded-lg" style="background:var(--sunken)">${currencyToggle}</div>
+          <div class="flex items-center gap-0.5">
+            <button data-action="prev-month" class="btn-icon" style="width:30px;height:30px">${icon("chevronLeft", 17)}</button>
+            <button data-action="next-month" class="btn-icon" style="width:30px;height:30px">${icon("chevronRight", 17)}</button>
+          </div>
         </div>
       </div>
 
-      <div class="grid grid-cols-3 gap-2 mb-4 text-center">
-        <div class="rounded-lg bg-slate-800/60 py-2">
-          <p class="text-[11px] text-slate-500">Income</p>
-          <p class="text-emerald-300 font-semibold">${fmt(income)}</p>
+      <div class="grid grid-cols-3 gap-2.5 mb-5">
+        <div class="well px-3.5 py-3">
+          <p class="eyebrow mb-1.5">In</p>
+          <p class="font-display text-[19px] font-medium num pos leading-none">${fmt(income)}</p>
         </div>
-        <div class="rounded-lg bg-slate-800/60 py-2">
-          <p class="text-[11px] text-slate-500">Expenses</p>
-          <p class="text-rose-300 font-semibold">${fmt(expense)}</p>
+        <div class="well px-3.5 py-3">
+          <p class="eyebrow mb-1.5">Out</p>
+          <p class="font-display text-[19px] font-medium num neg leading-none">${fmt(expense)}</p>
         </div>
-        <div class="rounded-lg bg-slate-800/60 py-2 ${net >= 0 ? "ring-1 ring-emerald-500/30" : "ring-1 ring-rose-500/30"}">
-          <p class="text-[11px] text-slate-500">Net P/L</p>
-          <p class="${net >= 0 ? "text-emerald-300" : "text-rose-300"} font-semibold">${net >= 0 ? "+" : "−"}${fmt(Math.abs(net))}</p>
+        <div class="px-3.5 py-3 rounded-xl" style="background:${net >= 0 ? "var(--pos-soft)" : "var(--neg-soft)"}">
+          <p class="eyebrow mb-1.5">Net</p>
+          <p class="font-display text-[19px] font-medium num leading-none ${net >= 0 ? "pos" : "neg"}">${net >= 0 ? "+" : "−"}${fmt(Math.abs(net))}</p>
         </div>
       </div>
 
-      <div class="flex gap-1 mb-4 px-1">${bars}</div>
+      <div class="flex gap-1.5 mb-5 px-1">${bars}</div>
 
-      <ul class="divide-y divide-slate-800 mb-3 max-h-44 overflow-y-auto">
-        ${rows || `<li class="py-3 text-sm text-slate-500">No transactions this month.</li>`}
+      <ul class="mb-4 max-h-48 overflow-y-auto pr-1" style="border-top:1px solid var(--border)">
+        ${rows || `<li class="py-4 text-[13px] faint text-center">No transactions logged this month.</li>`}
       </ul>
 
       <form id="tx-form" class="grid grid-cols-2 sm:grid-cols-6 gap-2">
-        <select name="type" class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm">
-          <option value="income">＋ Income</option>
-          <option value="expense">− Expense</option>
+        <select name="type" class="input">
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
         </select>
-        <input name="amount" type="number" step="0.01" min="0.01" placeholder="0.00" required
-               class="bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-        <input name="category" placeholder="Category"
-               class="bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-        <input name="description" placeholder="Description"
-               class="col-span-2 sm:col-span-1 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-        <input name="date" type="date" value="${todayISO()}"
-               class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-300" />
-        <button class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Log</button>
+        <input name="amount" type="number" step="0.01" min="0.01" placeholder="0.00" required class="input num" />
+        <input name="category" placeholder="Category" class="input" />
+        <input name="description" placeholder="Description" class="input col-span-2 sm:col-span-1" />
+        <input name="date" type="date" value="${todayISO()}" class="input" />
+        <button class="btn btn-primary">Log</button>
       </form>`;
   },
 };

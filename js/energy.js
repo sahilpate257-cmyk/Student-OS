@@ -1,11 +1,12 @@
 // energy.js — EnergyRanker: tasks sorted into high/medium/low brainpower lanes
 
 import { Store, escapeHtml } from "./store.js";
+import { icon } from "./icons.js";
 
 const LEVELS = [
-  { key: "high", label: "High", icon: "🔥", accent: "text-rose-300", ring: "ring-rose-400/60", chip: "bg-rose-500/15 border-rose-500/40" },
-  { key: "medium", label: "Medium", icon: "⚡", accent: "text-amber-300", ring: "ring-amber-400/60", chip: "bg-amber-500/15 border-amber-500/40" },
-  { key: "low", label: "Low", icon: "🌙", accent: "text-sky-300", ring: "ring-sky-400/60", chip: "bg-sky-500/15 border-sky-500/40" },
+  { key: "high", label: "High", color: "#B15C3C", hint: "Deep work" },
+  { key: "medium", label: "Medium", color: "#C4913E", hint: "Steady" },
+  { key: "low", label: "Low", color: "#2E6F5B", hint: "Easy wins" },
 ];
 
 export const EnergyRanker = {
@@ -47,7 +48,7 @@ export const EnergyRanker = {
     });
 
     Store.subscribe("tasks:changed", () => this.render());
-    Store.subscribe("deadlines:changed", () => this.render()); // linked badges
+    Store.subscribe("deadlines:changed", () => this.render());
     this.render();
   },
 
@@ -56,43 +57,39 @@ export const EnergyRanker = {
     const deadlineTitle = (id) => Store.state.deadlines.find((d) => d.id === id)?.title;
 
     const energyButtons = LEVELS.map((l) => `
-      <button data-action="set-energy" data-level="${l.key}"
-              class="px-3 py-1.5 rounded-full text-xs font-medium border transition
-                     ${current === l.key ? `${l.chip} ${l.accent}` : "border-slate-700 text-slate-400 hover:border-slate-500"}">
-        ${l.icon} ${l.label}
+      <button data-action="set-energy" data-level="${l.key}" class="chip ${current === l.key ? "chip-on" : ""}">
+        <span class="w-2 h-2 rounded-full" style="background:${l.color}"></span>${l.label}
       </button>`).join("");
 
     const columns = LEVELS.map((l) => {
-      const tasks = Store.state.tasks
-        .filter((t) => t.energy === l.key)
-        .sort((a, b) => a.done - b.done);
+      const tasks = Store.state.tasks.filter((t) => t.energy === l.key).sort((a, b) => a.done - b.done);
       const active = current === l.key;
 
       const cards = tasks.map((t) => {
         const linked = t.linkedDeadlineId ? deadlineTitle(t.linkedDeadlineId) : null;
         return `
-          <li class="flex items-start gap-2 bg-slate-800/60 rounded-lg px-2.5 py-2 group">
-            <button data-action="toggle-task" data-id="${t.id}"
-                    class="mt-0.5 w-4 h-4 shrink-0 rounded border ${t.done ? "bg-emerald-500 border-emerald-500" : "border-slate-600 hover:border-slate-400"} flex items-center justify-center text-[10px] text-slate-950 font-bold">
-              ${t.done ? "✓" : ""}
+          <li class="flex items-start gap-2.5 rounded-lg px-3 py-2.5 group" style="background:var(--surface);border:1px solid var(--border)">
+            <button data-action="toggle-task" data-id="${t.id}" class="cbx mt-0.5 ${t.done ? "cbx-on" : ""}" style="width:18px;height:18px">
+              ${t.done ? icon("check", 12) : ""}
             </button>
-            <div class="flex-1 min-w-0 text-sm">
-              <p class="${t.done ? "line-through text-slate-500" : ""}">${escapeHtml(t.title)}</p>
-              ${linked ? `<p class="text-[11px] text-slate-500 truncate">🔗 ${escapeHtml(linked)}</p>` : ""}
+            <div class="flex-1 min-w-0 text-[13.5px]">
+              <p class="${t.done ? "line-through faint" : ""}">${escapeHtml(t.title)}</p>
+              ${linked ? `<p class="text-[11px] faint truncate flex items-center gap-1 mt-0.5">${icon("link", 11)} ${escapeHtml(linked)}</p>` : ""}
             </div>
-            <button data-action="delete-task" data-id="${t.id}"
-                    class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400">✕</button>
+            <button data-action="delete-task" data-id="${t.id}" class="reveal btn-icon" style="width:26px;height:26px">${icon("x", 14)}</button>
           </li>`;
       }).join("");
 
       return `
-        <div class="rounded-xl bg-slate-900/80 border border-slate-800 p-3 ${active ? `ring-2 ${l.ring}` : ""}">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-semibold ${l.accent}">${l.icon} ${l.label}</h3>
-            ${active ? `<span class="text-[10px] uppercase tracking-wide text-slate-400">do these now</span>` : ""}
+        <div class="rounded-xl p-3.5" style="background:${active ? "var(--surface-2)" : "var(--sunken)"};border:1px solid ${active ? "var(--border-2)" : "transparent"}">
+          <div class="flex items-center justify-between mb-2.5">
+            <h3 class="text-[13px] font-semibold flex items-center gap-2" style="color:var(--ink)">
+              <span class="w-2 h-2 rounded-full" style="background:${l.color}"></span>${l.label}
+            </h3>
+            <span class="text-[10.5px] faint">${active ? "Do these now" : l.hint}</span>
           </div>
-          <ul class="space-y-1.5 min-h-10">
-            ${cards || `<li class="text-xs text-slate-600 py-1">Nothing here.</li>`}
+          <ul class="space-y-2 min-h-[2.5rem]">
+            ${cards || `<li class="text-[12px] faint py-1">Nothing here.</li>`}
           </ul>
         </div>`;
     }).join("");
@@ -103,29 +100,34 @@ export const EnergyRanker = {
       .join("");
 
     this.el.innerHTML = `
-      <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-        <h2 class="font-semibold text-slate-100">⚡ Energy Ranker</h2>
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <div class="flex items-center gap-2.5">
+          <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("gauge", 18)}</span>
+          <div>
+            <h2 class="sect-title leading-tight">Focus</h2>
+            <p class="text-[11.5px] faint">Ranked by brainpower</p>
+          </div>
+        </div>
         <div class="flex items-center gap-1.5">
-          <span class="text-xs text-slate-500 mr-1">My energy:</span>
+          <span class="text-[11.5px] faint mr-0.5">I'm feeling</span>
           ${energyButtons}
         </div>
       </div>
 
-      <div class="grid grid-cols-1 gap-3 mb-3">${columns}</div>
+      <div class="grid grid-cols-1 gap-2.5 mb-4">${columns}</div>
 
       <form id="task-form" class="flex flex-wrap gap-2">
-        <input name="title" placeholder="New task…" required
-               class="flex-1 min-w-36 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-        <select name="energy" class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm">
-          <option value="high">🔥 High</option>
-          <option value="medium">⚡ Medium</option>
-          <option value="low">🌙 Low</option>
+        <input name="title" placeholder="New task…" required class="input flex-1" style="min-width:140px" />
+        <select name="energy" class="input" style="width:auto">
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
         </select>
-        <select name="deadline" class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm max-w-36">
+        <select name="deadline" class="input" style="width:auto;max-width:150px">
           <option value="">No link</option>
           ${deadlineOptions}
         </select>
-        <button class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Add</button>
+        <button class="btn btn-primary">Add</button>
       </form>`;
   },
 };

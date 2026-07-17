@@ -9,6 +9,7 @@ import {
   multiFactor, getMultiFactorResolver, TotpMultiFactorGenerator,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { icon } from "./icons.js";
 import { CalendarModule } from "./calendar.js";
 import { EnergyRanker } from "./energy.js";
 import { LedgerModule } from "./ledger.js";
@@ -51,9 +52,29 @@ function seedDemoData() {
   Store.save();
 }
 
+const NAV = [
+  { id: "portfolio-module", icon: "trending", label: "Invest" },
+  { id: "ledger-module", icon: "wallet", label: "Cashflow" },
+  { id: "energy-module", icon: "gauge", label: "Focus" },
+  { id: "calendar-module", icon: "calendar", label: "Deadlines" },
+  { id: "notes-module", icon: "notebook", label: "Notes" },
+  { id: "gym-module", icon: "dumbbell", label: "Training" },
+];
+
 function bootstrapApp() {
   document.getElementById("header-date").textContent =
-    new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+
+  // header chrome icons
+  document.getElementById("security-btn").innerHTML = icon("shield", 17);
+  document.getElementById("sign-out").innerHTML = icon("logout", 17);
+  document.getElementById("quick-add").innerHTML = icon("plus", 16) + "<span>Capture</span>";
+
+  // mobile nav icons + labels
+  document.querySelectorAll("[data-nav]").forEach((btn) => {
+    const meta = NAV.find((n) => n.id === btn.dataset.nav);
+    if (meta) btn.innerHTML = icon(meta.icon, 19) + `<span>${meta.label}</span>`;
+  });
 
   [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule, PortfolioModule].forEach((m) => m.init());
 
@@ -348,48 +369,47 @@ const SecurityPanel = {
 
     let body;
     if (this.pendingSecret) {
-      const otpauthUrl = this.pendingSecret.generateQrCodeUrl(user.email, "Student OS");
+      const otpauthUrl = this.pendingSecret.generateQrCodeUrl(user.email, "Ledgerly");
       body = `
-        <p class="text-sm text-slate-300 mb-2">1 · Open your authenticator app (Google Authenticator, Authy, 1Password…) and add a new account using this setup key:</p>
-        <div class="flex items-center gap-2 mb-1 flex-wrap">
-          <code class="bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm tracking-wider break-all">${this.pendingSecret.secretKey}</code>
-          <button data-action="copy-secret" class="text-xs text-indigo-300 border border-indigo-500/40 rounded-lg px-3 py-1.5">Copy</button>
+        <p class="text-[13.5px] muted mb-2"><span class="font-semibold" style="color:var(--ink)">1.</span> Open your authenticator app (Google Authenticator, Authy, 1Password) and add an account with this setup key:</p>
+        <div class="flex items-center gap-2 mb-2 flex-wrap">
+          <code class="well px-3 py-2 text-[13px] tracking-wider break-all num" style="border:1px solid var(--border-2)">${this.pendingSecret.secretKey}</code>
+          <button data-action="copy-secret" class="btn btn-ghost btn-sm">Copy</button>
         </div>
-        <p class="text-[11px] text-slate-500 mb-3">On this device with an authenticator installed? <a href="${otpauthUrl}" class="text-indigo-300 underline">Tap to add directly</a>. Pick "time-based" if asked.</p>
-        <p class="text-sm text-slate-300 mb-2">2 · Enter the 6-digit code your app now shows, to prove it's linked:</p>
-        <form id="enroll-confirm-form" class="flex gap-2">
-          <input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" required
-                 class="w-28 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm tracking-widest text-center placeholder-slate-600 focus:outline-none focus:border-indigo-400" />
-          <button type="submit" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Turn on 2FA</button>
-          <button type="button" data-action="cancel-enroll" class="text-sm text-slate-400 hover:text-slate-200 px-2">Cancel</button>
+        <p class="text-[12px] faint mb-4">On a phone with an app installed? <a href="${otpauthUrl}" class="underline" style="color:var(--ink)">Tap to add directly</a>. Choose "time-based" if asked.</p>
+        <p class="text-[13.5px] muted mb-2"><span class="font-semibold" style="color:var(--ink)">2.</span> Enter the 6-digit code it now shows:</p>
+        <form id="enroll-confirm-form" class="flex flex-wrap gap-2">
+          <input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" required class="input num text-center tracking-[.3em]" style="width:120px" />
+          <button type="submit" class="btn btn-primary">Turn on 2FA</button>
+          <button type="button" data-action="cancel-enroll" class="btn btn-ghost">Cancel</button>
         </form>`;
     } else if (has2fa) {
       body = `
-        <p class="text-sm text-emerald-300 mb-3">✓ 2FA is on — every new sign-in needs a code from your authenticator app.</p>
-        <p class="text-sm text-slate-300 mb-2">To turn it off, confirm your password and a current code:</p>
+        <div class="flex items-center gap-2 mb-3 text-[13.5px] pos font-semibold">${icon("check", 16)} Two-factor is on — every new sign-in needs a code.</div>
+        <p class="text-[13.5px] muted mb-2">To turn it off, confirm your password and a current code:</p>
         <form id="disable-2fa-form" class="flex flex-wrap gap-2">
-          <input name="password" type="password" placeholder="Password" required autocomplete="current-password"
-                 class="w-44 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-          <input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" required
-                 class="w-28 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm tracking-widest text-center placeholder-slate-600 focus:outline-none focus:border-indigo-400" />
-          <button type="submit" class="bg-rose-500/80 hover:bg-rose-500 text-white rounded-lg px-4 py-2 text-sm font-medium">Turn off 2FA</button>
+          <input name="password" type="password" placeholder="Password" required autocomplete="current-password" class="input" style="width:180px" />
+          <input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" required class="input num text-center tracking-[.3em]" style="width:120px" />
+          <button type="submit" class="btn btn-danger">Turn off 2FA</button>
         </form>`;
     } else {
       body = `
-        <p class="text-sm text-slate-300 mb-3">2FA is <span class="text-slate-100 font-medium">off</span>. Turn it on to require a 6-digit code from an authenticator app at every new sign-in — your data stays safe even if someone learns your password.</p>
+        <p class="text-[13.5px] muted mb-3">Two-factor is <span class="font-semibold" style="color:var(--ink)">off</span>. Turn it on to require a code from an authenticator app at every new sign-in — your money data stays safe even if someone learns your password.</p>
         <form id="enroll-start-form" class="flex flex-wrap gap-2">
-          <input name="password" type="password" placeholder="Confirm your password" required autocomplete="current-password"
-                 class="w-52 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-          <button type="submit" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Set up 2FA</button>
+          <input name="password" type="password" placeholder="Confirm your password" required autocomplete="current-password" class="input" style="width:220px" />
+          <button type="submit" class="btn btn-primary">Set up 2FA</button>
         </form>`;
     }
 
     this.el.innerHTML = `
       <div class="flex items-center justify-between mb-1">
-        <h2 class="font-semibold text-slate-100">🔐 Security</h2>
-        <button data-action="close-security" class="text-slate-500 hover:text-slate-300 px-2">✕</button>
+        <div class="flex items-center gap-2.5">
+          <span class="grid place-items-center w-8 h-8 rounded-[9px]" style="background:var(--sunken);color:var(--ink)">${icon("shield", 17)}</span>
+          <h2 class="sect-title">Security</h2>
+        </div>
+        <button data-action="close-security" class="btn-icon">${icon("x", 17)}</button>
       </div>
-      <p class="text-[11px] text-slate-500 mb-3">Signed in as ${user.email} · you stay signed in on this device until you sign out.</p>
+      <p class="text-[12.5px] faint mb-4">Signed in as ${user.email} · you stay signed in on this device until you sign out.</p>
       <p id="security-msg" class="text-xs mb-3"></p>
       ${body}`;
   },

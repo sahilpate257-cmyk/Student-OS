@@ -3,101 +3,204 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Student OS — Personal Dashboard</title>
+  <title>Ledgerly — Your money, in command</title>
+  <meta name="description" content="The command centre for people with more than one income stream." />
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = { theme: { extend: {
+      fontFamily: { sans: ['Manrope','ui-sans-serif','system-ui','sans-serif'], display: ['Fraunces','Georgia','serif'] },
+    } } };
+  </script>
   <style>
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    :root {
+      --bg: #F4F2EC;          /* warm bone page */
+      --surface: #FFFFFF;
+      --surface-2: #FBFAF6;   /* faint raised */
+      --sunken: #F0EDE5;      /* inset wells */
+      --border: #E7E3D8;
+      --border-2: #DAD5C7;
+      --ink: #1B1A16;         /* near-black, warm */
+      --ink-muted: #6E6A5F;
+      --ink-faint: #9C978A;
+      --pos: #1C7A4E;         /* gains — deep green */
+      --pos-soft: #E7F1E9;
+      --neg: #B0452C;         /* losses — clay */
+      --neg-soft: #F6E9E2;
+      --gold: #B58A2E;        /* highlight accent, used sparingly */
+      --ring: #1B1A16;
+      --shadow-sm: 0 1px 2px rgba(27,26,22,.04), 0 1px 3px rgba(27,26,22,.05);
+      --shadow-md: 0 4px 12px rgba(27,26,22,.05), 0 2px 4px rgba(27,26,22,.04);
+      --shadow-lg: 0 12px 32px rgba(27,26,22,.08), 0 4px 10px rgba(27,26,22,.04);
+      --r-card: 16px; --r-btn: 10px; --r-chip: 999px; --r-input: 10px;
+    }
+    * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body { background: var(--bg); color: var(--ink); font-family: 'Manrope', system-ui, sans-serif; }
+    .font-display { font-family: 'Fraunces', Georgia, serif; }
+    .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+    /* scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #D9D4C7; border-radius: 6px; }
+    ::-webkit-scrollbar-thumb:hover { background: #C7C1B0; }
     ::-webkit-scrollbar-track { background: transparent; }
-    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); }
+    input[type="date"]::-webkit-calendar-picker-indicator { opacity: .5; cursor: pointer; }
+
+    /* icons */
+    .ic { display: inline-block; vertical-align: middle; flex: none; }
+
+    /* cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); box-shadow: var(--shadow-sm); }
+    .card-pad { padding: 20px; }
+    @media (min-width: 1024px) { .card-pad { padding: 24px; } }
+
+    /* type helpers */
+    .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint); }
+    .muted { color: var(--ink-muted); }
+    .faint { color: var(--ink-faint); }
+    .sect-title { font-family:'Fraunces',serif; font-weight: 500; font-size: 19px; letter-spacing: -.01em; color: var(--ink); }
+    .pos { color: var(--pos); } .neg { color: var(--neg); }
+
+    /* buttons */
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; font-size:13.5px; font-weight:600;
+           border-radius: var(--r-btn); padding: 9px 15px; border:1px solid transparent; cursor:pointer; transition:.15s ease;
+           white-space: nowrap; }
+    .btn:disabled { opacity:.5; cursor:default; }
+    .btn-primary { background: var(--ink); color: #FBFAF6; }
+    .btn-primary:hover:not(:disabled) { background:#33302A; }
+    .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--border-2); }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface-2); border-color:#C9C3B4; }
+    .btn-danger { background: var(--surface); color: var(--neg); border-color: #E7D2C8; }
+    .btn-danger:hover:not(:disabled) { background: var(--neg-soft); }
+    .btn-sm { padding: 6px 11px; font-size: 12.5px; border-radius: 8px; }
+
+    /* icon-only subtle button */
+    .btn-icon { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:9px;
+                color: var(--ink-muted); border:1px solid transparent; cursor:pointer; transition:.15s; }
+    .btn-icon:hover { background: var(--sunken); color: var(--ink); }
+
+    /* inputs */
+    .input { width:100%; background: var(--surface); border:1px solid var(--border-2); border-radius: var(--r-input);
+             padding: 9px 12px; font-size: 13.5px; color: var(--ink); transition:.15s; font-family:inherit; }
+    .input::placeholder { color: var(--ink-faint); }
+    .input:focus { outline:none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(27,26,22,.07); }
+    select.input { -webkit-appearance:none; appearance:none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236E6A5F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position: right 10px center; padding-right: 30px; }
+
+    /* chips / segmented */
+    .chip { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; padding:6px 12px;
+            border-radius: var(--r-chip); border:1px solid var(--border-2); color: var(--ink-muted); background:var(--surface); cursor:pointer; transition:.15s; }
+    .chip:hover { border-color:#C9C3B4; color:var(--ink); }
+    .chip-on { background: var(--ink); color:#FBFAF6; border-color: var(--ink); }
+
+    .well { background: var(--sunken); border-radius: 12px; }
+    .divide-row { border-top:1px solid var(--border); }
+
+    /* tag badges */
+    .tag { font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; letter-spacing:.01em; }
+    .tag-uni { background:#EAEDF4; color:#3C5488; }
+    .tag-hustle { background:#EDEFE6; color:#5E6B3E; }
+
+    /* checkbox */
+    .cbx { width:20px; height:20px; flex:none; border-radius:6px; border:1.5px solid var(--border-2); background:var(--surface);
+           display:flex; align-items:center; justify-content:center; color:transparent; cursor:pointer; transition:.15s; }
+    .cbx:hover { border-color: var(--ink-faint); }
+    .cbx-on { background: var(--pos); border-color: var(--pos); color:#fff; }
+
+    .reveal { opacity:0; transition:opacity .15s; } .group:hover .reveal { opacity:1; }
+    .fade-in { animation: fade .5s ease backwards; }
+    @keyframes fade { from { opacity:0; transform: translateY(6px); } }
+
+    a { color: inherit; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen antialiased">
+<body class="min-h-screen antialiased">
 
-  <!-- auth overlay: shown until signed in -->
-  <div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4">
-    <div class="w-full max-w-sm bg-slate-900/80 border border-slate-800 rounded-2xl p-6">
-      <h1 class="font-bold text-xl mb-1">⚡ Student<span class="text-indigo-400">OS</span></h1>
-      <p class="text-sm text-slate-400 mb-5">Sign in to sync across your devices.</p>
-      <form id="auth-form" class="space-y-3">
-        <input id="auth-email" type="email" required placeholder="Email" autocomplete="email"
-               class="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-        <input id="auth-password" type="password" required minlength="6" placeholder="Password (6+ characters)" autocomplete="current-password"
-               class="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-        <div class="flex gap-2 pt-1">
-          <button type="submit" data-mode="login"
-                  class="flex-1 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Log In</button>
-          <button type="submit" data-mode="signup"
-                  class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg px-4 py-2 text-sm font-medium">Sign Up</button>
-        </div>
-        <button type="button" id="forgot-password" class="text-xs text-slate-500 hover:text-indigo-300 underline">Forgot password?</button>
-      </form>
-      <form id="mfa-form" class="hidden space-y-3">
-        <p class="text-sm text-slate-300">This account has 2FA on. Enter the 6-digit code from your authenticator app:</p>
-        <input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" required
-               class="w-full bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-lg tracking-[.5em] text-center placeholder-slate-600 focus:outline-none focus:border-indigo-400" />
-        <div class="flex gap-2">
-          <button type="submit" class="flex-1 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Verify</button>
-          <button type="button" id="mfa-cancel" class="text-sm text-slate-400 hover:text-slate-200 px-3">Back</button>
-        </div>
-      </form>
-      <p id="auth-error" class="text-xs text-rose-400 hidden mt-3"></p>
-      <p id="auth-status" class="text-xs text-slate-500 mt-3"></p>
+  <!-- ============ AUTH ============ -->
+  <div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-5" style="background:var(--bg)">
+    <div class="w-full max-w-[380px]">
+      <div class="flex items-center gap-2.5 mb-7 justify-center">
+        <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--ink);color:#FBFAF6">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 7v10l8 5 8-5V7z"/><path d="m4 7 8 5 8-5"/><path d="M12 22V12"/></svg>
+        </span>
+        <span class="font-display text-[22px] font-medium tracking-tight">Ledgerly</span>
+      </div>
+      <div class="card card-pad" style="box-shadow:var(--shadow-lg)">
+        <h1 class="font-display text-[21px] font-medium mb-1">Welcome back</h1>
+        <p class="text-[13.5px] muted mb-5">Your money and momentum, synced across every device.</p>
+        <form id="auth-form" class="space-y-2.5">
+          <input id="auth-email" type="email" required placeholder="Email" autocomplete="email" class="input" />
+          <input id="auth-password" type="password" required minlength="6" placeholder="Password" autocomplete="current-password" class="input" />
+          <div class="flex gap-2.5 pt-1">
+            <button type="submit" data-mode="login" class="btn btn-primary flex-1">Log in</button>
+            <button type="submit" data-mode="signup" class="btn btn-ghost flex-1">Create account</button>
+          </div>
+          <button type="button" id="forgot-password" class="text-[12.5px] faint hover:text-[var(--ink)] transition pt-0.5">Forgot password?</button>
+        </form>
+        <form id="mfa-form" class="hidden space-y-3">
+          <p class="text-[13.5px] muted">Two-factor is on for this account. Enter the 6-digit code from your authenticator app.</p>
+          <input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" required
+                 class="input text-center text-[20px] tracking-[.4em] num" />
+          <div class="flex gap-2.5">
+            <button type="submit" class="btn btn-primary flex-1">Verify</button>
+            <button type="button" id="mfa-cancel" class="btn btn-ghost px-4">Back</button>
+          </div>
+        </form>
+        <p id="auth-error" class="text-[12.5px] neg hidden mt-3"></p>
+        <p id="auth-status" class="text-[12.5px] faint mt-3"></p>
+      </div>
+      <p class="text-center text-[12px] faint mt-5">Bank-grade encryption · your data is yours alone</p>
     </div>
   </div>
 
+  <!-- ============ APP ============ -->
   <div id="app-shell" class="hidden">
-  <header class="sticky top-0 z-20 backdrop-blur bg-slate-950/80 border-b border-slate-800">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 py-3">
-      <h1 class="font-bold text-lg tracking-tight">⚡ Student<span class="text-indigo-400">OS</span></h1>
-      <span id="header-date" class="text-sm text-slate-400 hidden sm:block"></span>
-      <span class="flex-1"></span>
-      <button id="security-btn" title="Security & 2FA"
-              class="text-xs text-slate-500 hover:text-indigo-300 border border-slate-700 rounded-lg px-3 py-1.5">🔐</button>
-      <button id="sign-out"
-              class="text-xs text-slate-500 hover:text-rose-400 border border-slate-700 rounded-lg px-3 py-1.5">Sign out</button>
-      <button id="quick-add"
-              class="bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-medium rounded-lg px-3.5 py-1.5">
-        ＋ Brain Dump
-      </button>
-    </div>
-  </header>
+    <header class="sticky top-0 z-30" style="background:rgba(244,242,236,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)">
+      <div class="max-w-6xl mx-auto flex items-center gap-3 px-4 lg:px-6 py-3">
+        <div class="flex items-center gap-2.5">
+          <span class="grid place-items-center w-8 h-8 rounded-[9px]" style="background:var(--ink);color:#FBFAF6">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 7v10l8 5 8-5V7z"/><path d="m4 7 8 5 8-5"/><path d="M12 22V12"/></svg>
+          </span>
+          <span class="font-display text-[19px] font-medium tracking-tight hidden sm:block">Ledgerly</span>
+        </div>
+        <span id="header-date" class="text-[13px] muted hidden md:block ml-1"></span>
+        <span class="flex-1"></span>
+        <button id="security-btn" title="Security & 2FA" class="btn-icon"></button>
+        <button id="sign-out" title="Sign out" class="btn-icon"></button>
+        <button id="quick-add" class="btn btn-primary btn-sm ml-1"></button>
+      </div>
+    </header>
 
-  <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 pb-24 lg:pb-6">
-    <section id="security-panel"
-             class="hidden lg:col-span-12 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-indigo-500/30 p-4"></section>
+    <main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 px-4 lg:px-6 py-5 pb-28 lg:pb-8">
+      <section id="security-panel" class="hidden lg:col-span-12 scroll-mt-24 card card-pad"></section>
 
-    <section id="calendar-module"
-             class="lg:col-span-7 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
+      <!-- money first -->
+      <section id="portfolio-module" class="lg:col-span-12 scroll-mt-24 card card-pad fade-in"></section>
+      <section id="ledger-module" class="lg:col-span-7 scroll-mt-24 card card-pad fade-in"></section>
+      <section id="energy-module" class="lg:col-span-5 scroll-mt-24 card card-pad fade-in"></section>
+      <section id="calendar-module" class="lg:col-span-7 scroll-mt-24 card card-pad fade-in"></section>
+      <section id="notes-module" class="lg:col-span-5 scroll-mt-24 card card-pad fade-in"></section>
+      <section id="gym-module" class="lg:col-span-12 scroll-mt-24 card card-pad fade-in"></section>
+    </main>
 
-    <section id="energy-module"
-             class="lg:col-span-5 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
-
-    <section id="ledger-module"
-             class="lg:col-span-5 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
-
-    <section id="notes-module"
-             class="lg:col-span-7 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
-
-    <section id="gym-module"
-             class="lg:col-span-12 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
-
-    <section id="portfolio-module"
-             class="lg:col-span-12 scroll-mt-20 rounded-2xl bg-slate-900/60 border border-slate-800 p-4"></section>
-  </main>
-
-  <!-- mobile bottom nav -->
-  <nav class="lg:hidden fixed bottom-0 inset-x-0 z-20 backdrop-blur bg-slate-950/90 border-t border-slate-800">
-    <div class="grid grid-cols-6 text-center text-xs text-slate-400">
-      <button data-nav="calendar-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">📅</span>Deadlines</button>
-      <button data-nav="energy-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">⚡</span>Tasks</button>
-      <button data-nav="ledger-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">💰</span>Ledger</button>
-      <button data-nav="notes-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">📝</span>Notes</button>
-      <button data-nav="gym-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">🏋️</span>Gym</button>
-      <button data-nav="portfolio-module" class="py-3 hover:text-indigo-300"><span class="block text-lg">📈</span>Stocks</button>
-    </div>
-  </nav>
+    <!-- mobile bottom nav -->
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30" style="background:rgba(244,242,236,.94);backdrop-filter:blur(12px);border-top:1px solid var(--border)">
+      <div class="grid grid-cols-6 max-w-lg mx-auto">
+        <button data-nav="portfolio-module" class="nav-btn"></button>
+        <button data-nav="ledger-module" class="nav-btn"></button>
+        <button data-nav="energy-module" class="nav-btn"></button>
+        <button data-nav="calendar-module" class="nav-btn"></button>
+        <button data-nav="notes-module" class="nav-btn"></button>
+        <button data-nav="gym-module" class="nav-btn"></button>
+      </div>
+    </nav>
   </div>
+
+  <style>
+    .nav-btn { display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 0 10px; font-size:10.5px; font-weight:600; color:var(--ink-faint); transition:.15s; }
+    .nav-btn:hover, .nav-btn.active { color: var(--ink); }
+  </style>
 
   <script type="module" src="js/app.js"></script>
 </body>

@@ -1,6 +1,7 @@
 // calendar.js — CalendarModule: month grid + unified deadline list
 
 import { Store, todayISO, escapeHtml, formatDate, SOURCE } from "./store.js";
+import { icon } from "./icons.js";
 
 export const CalendarModule = {
   el: null,
@@ -75,12 +76,13 @@ export const CalendarModule = {
       const isToday = iso === today;
       const dots = (byDate[iso] ?? [])
         .slice(0, 3)
-        .map((dl) => `<span class="w-1.5 h-1.5 rounded-full ${SOURCE[dl.source].dot}"></span>`)
+        .map((dl) => `<span class="w-1.5 h-1.5 rounded-full" style="background:${SOURCE[dl.source].dot}"></span>`)
         .join("");
       cells += `
-        <div class="aspect-square flex flex-col items-center justify-center rounded-lg text-sm
-                    ${isToday ? "bg-indigo-500/20 ring-1 ring-indigo-400 font-bold text-indigo-200" : "text-slate-300 hover:bg-slate-800/60"}">
-          <span>${d}</span>
+        <div class="aspect-square flex flex-col items-center justify-center rounded-lg text-[13px] transition"
+             style="${isToday ? "background:var(--ink);color:#FBFAF6;font-weight:600" : "color:var(--ink-muted)"}"
+             ${isToday ? "" : 'onmouseover="this.style.background=\'var(--sunken)\'" onmouseout="this.style.background=\'\'"'}>
+          <span class="num">${d}</span>
           <span class="flex gap-0.5 h-1.5 mt-0.5">${dots}</span>
         </div>`;
     }
@@ -93,57 +95,56 @@ export const CalendarModule = {
       const overdue = !dl.done && dl.dueDate < today;
       const s = SOURCE[dl.source];
       return `
-        <li class="flex items-center gap-3 py-2 group">
-          <button data-action="toggle-deadline" data-id="${dl.id}"
-                  class="w-5 h-5 shrink-0 rounded border ${dl.done ? "bg-emerald-500 border-emerald-500" : "border-slate-600 hover:border-slate-400"} flex items-center justify-center text-xs text-slate-950 font-bold">
-            ${dl.done ? "✓" : ""}
+        <li class="flex items-center gap-3 py-2.5 group divide-row">
+          <button data-action="toggle-deadline" data-id="${dl.id}" class="cbx ${dl.done ? "cbx-on" : ""}">
+            ${dl.done ? icon("check", 13) : ""}
           </button>
           <div class="flex-1 min-w-0">
-            <p class="truncate ${dl.done ? "line-through text-slate-500" : ""}">${escapeHtml(dl.title)}</p>
+            <p class="text-[13.5px] truncate ${dl.done ? "line-through faint" : ""}">${escapeHtml(dl.title)}</p>
           </div>
-          <span class="text-[11px] px-2 py-0.5 rounded-full ${s.badge}">${s.label}</span>
-          <span class="text-xs w-16 text-right ${overdue ? "text-rose-400 font-semibold" : "text-slate-400"}">
-            ${overdue ? "⚠ " : ""}${formatDate(dl.dueDate)}
-          </span>
-          <button data-action="delete-deadline" data-id="${dl.id}"
-                  class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 px-1">✕</button>
+          <span class="${s.tag}">${s.label}</span>
+          <span class="text-[12px] w-16 text-right num ${overdue ? "neg font-semibold" : "faint"}">${formatDate(dl.dueDate)}</span>
+          <button data-action="delete-deadline" data-id="${dl.id}" class="reveal btn-icon" style="width:28px;height:28px">${icon("x", 15)}</button>
         </li>`;
     }).join("");
 
     this.el.innerHTML = `
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-semibold text-slate-100">📅 Calendar &amp; Deadlines</h2>
-        <div class="flex items-center gap-2 text-sm">
-          <button data-action="prev-month" class="px-2 py-1 rounded hover:bg-slate-800">‹</button>
-          <span class="w-32 text-center text-slate-300">${monthName}</span>
-          <button data-action="next-month" class="px-2 py-1 rounded hover:bg-slate-800">›</button>
+      <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div class="flex items-center gap-2.5">
+          <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("calendar", 18)}</span>
+          <div>
+            <h2 class="sect-title leading-tight">Deadlines</h2>
+            <p class="text-[11.5px] faint">${monthName}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-0.5">
+          <button data-action="prev-month" class="btn-icon" style="width:30px;height:30px">${icon("chevronLeft", 17)}</button>
+          <button data-action="next-month" class="btn-icon" style="width:30px;height:30px">${icon("chevronRight", 17)}</button>
         </div>
       </div>
 
-      <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-500 mb-1">
+      <div class="grid grid-cols-7 gap-1 text-center eyebrow mb-1.5">
         ${["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => `<div>${d}</div>`).join("")}
       </div>
       <div class="grid grid-cols-7 gap-1 mb-4">${cells}</div>
 
-      <div class="flex items-center gap-3 text-xs text-slate-400 mb-2">
-        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-400"></span> Uni</span>
-        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Hustle</span>
+      <div class="flex items-center gap-4 text-[12px] muted mb-2">
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:${SOURCE.uni.dot}"></span> Uni</span>
+        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:${SOURCE.hustle.dot}"></span> Hustle</span>
       </div>
 
-      <ul class="divide-y divide-slate-800 mb-3 max-h-56 overflow-y-auto">
-        ${rows || `<li class="py-3 text-sm text-slate-500">No deadlines yet — add one below.</li>`}
+      <ul class="mb-4 max-h-56 overflow-y-auto pr-1" style="border-top:1px solid var(--border)">
+        ${rows || `<li class="py-4 text-[13px] faint text-center">No deadlines yet — add one below.</li>`}
       </ul>
 
       <form id="deadline-form" class="flex flex-wrap gap-2">
-        <input name="title" placeholder="New deadline…" required
-               class="flex-1 min-w-40 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-        <select name="source" class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm">
-          <option value="uni">🎓 Uni</option>
-          <option value="hustle">💼 Hustle</option>
+        <input name="title" placeholder="New deadline…" required class="input flex-1" style="min-width:150px" />
+        <select name="source" class="input" style="width:auto">
+          <option value="uni">Uni</option>
+          <option value="hustle">Hustle</option>
         </select>
-        <input name="dueDate" type="date" value="${todayISO()}" required
-               class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-300" />
-        <button class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Add</button>
+        <input name="dueDate" type="date" value="${todayISO()}" required class="input" style="width:auto" />
+        <button class="btn btn-primary">Add</button>
       </form>`;
   },
 };

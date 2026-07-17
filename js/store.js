@@ -135,6 +135,6 @@ export function formatDate(iso) {
 }
 
 export const SOURCE = {
-  uni: { label: "Uni", dot: "bg-blue-400", badge: "bg-blue-500/15 text-blue-300 border border-blue-500/30" },
-  hustle: { label: "Hustle", dot: "bg-emerald-400", badge: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" },
+  uni: { label: "Uni", dot: "#46688C", tag: "tag tag-uni" },
+  hustle: { label: "Hustle", dot: "#7C8A4A", tag: "tag tag-hustle" },
 };

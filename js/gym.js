@@ -1,6 +1,7 @@
 // gym.js — GymModule: full workout logger (exercises/sets/reps/weight) + per-lift progress chart
 
 import { Store, todayISO, escapeHtml, formatDate } from "./store.js";
+import { icon } from "./icons.js";
 
 export const GymModule = {
   el: null,
@@ -93,41 +94,35 @@ export const GymModule = {
 
   render() {
     const draftHtml = this.draft.exercises.map((ex, exi) => `
-      <div class="bg-slate-800/60 rounded-lg p-2.5 space-y-2">
+      <div class="well p-3 space-y-2">
         <div class="flex items-center gap-2">
-          <input data-field="ex-name" data-exidx="${exi}" value="${escapeHtml(ex.name)}" placeholder="Exercise name…"
-                 class="flex-1 bg-slate-900/60 border border-slate-700 rounded px-2 py-1.5 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-          <button data-action="draft-remove-exercise" data-idx="${exi}" class="text-slate-500 hover:text-rose-400 text-sm px-1">✕</button>
+          <input data-field="ex-name" data-exidx="${exi}" value="${escapeHtml(ex.name)}" placeholder="Exercise name…" class="input flex-1" />
+          <button data-action="draft-remove-exercise" data-idx="${exi}" class="btn-icon" style="width:30px;height:30px">${icon("x", 15)}</button>
         </div>
         <div class="space-y-1.5">
           ${ex.sets.map((s, si) => `
-            <div class="flex items-center gap-2 pl-2">
-              <span class="text-[11px] text-slate-500 w-10">Set ${si + 1}</span>
-              <input data-field="set-reps" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" value="${s.reps}" placeholder="reps"
-                     class="w-16 bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-xs placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-              <span class="text-slate-600 text-xs">×</span>
-              <input data-field="set-weight" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" step="0.5" value="${s.weight}" placeholder="kg"
-                     class="w-16 bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-xs placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
-              <button data-action="draft-remove-set" data-idx="${exi}" data-sidx="${si}" class="text-slate-600 hover:text-rose-400 text-xs px-1">✕</button>
+            <div class="flex items-center gap-2 pl-1">
+              <span class="text-[11px] faint w-9">Set ${si + 1}</span>
+              <input data-field="set-reps" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" value="${s.reps}" placeholder="reps" class="input num" style="width:70px;padding:6px 10px" />
+              <span class="faint text-xs">×</span>
+              <input data-field="set-weight" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" step="0.5" value="${s.weight}" placeholder="kg" class="input num" style="width:70px;padding:6px 10px" />
+              <button data-action="draft-remove-set" data-idx="${exi}" data-sidx="${si}" class="btn-icon" style="width:26px;height:26px">${icon("x", 13)}</button>
             </div>`).join("")}
-          <button data-action="draft-add-set" data-idx="${exi}" class="text-[11px] text-indigo-300 hover:text-indigo-200 pl-2">+ Add set</button>
+          <button data-action="draft-add-set" data-idx="${exi}" class="text-[12px] font-semibold pl-1 flex items-center gap-1" style="color:var(--ink)">${icon("plus", 13)} Add set</button>
         </div>
       </div>`).join("");
 
     const sortedWorkouts = [...Store.state.workouts].sort((a, b) => b.date.localeCompare(a.date));
     const historyHtml = sortedWorkouts.map((w) => `
-      <li class="bg-slate-800/50 rounded-xl px-3 py-2.5 group">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-sm font-medium">${escapeHtml(w.label || "Workout")}</span>
-          <span class="text-[11px] text-slate-500">${formatDate(w.date)}</span>
+      <li class="well px-3.5 py-3 group">
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="text-[13.5px] font-semibold">${escapeHtml(w.label || "Workout")}</span>
+          <span class="text-[11px] faint">${formatDate(w.date)}</span>
           <span class="flex-1"></span>
-          <button data-action="delete-workout" data-id="${w.id}"
-                  class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 text-sm px-1">✕</button>
+          <button data-action="delete-workout" data-id="${w.id}" class="reveal btn-icon" style="width:26px;height:26px">${icon("x", 14)}</button>
         </div>
-        <ul class="text-xs text-slate-400 space-y-0.5">
-          ${w.exercises.map((ex) => `
-            <li>${escapeHtml(ex.name)}: ${ex.sets.map((s) => `${s.reps}×${s.weight}kg`).join(", ")}</li>
-          `).join("")}
+        <ul class="text-[12px] muted space-y-0.5 num">
+          ${w.exercises.map((ex) => `<li>${escapeHtml(ex.name)}: ${ex.sets.map((s) => `${s.reps}×${s.weight}kg`).join(", ")}</li>`).join("")}
         </ul>
       </li>`).join("");
 
@@ -136,7 +131,7 @@ export const GymModule = {
       this.selectedExercise = exerciseNames[exerciseNames.length - 1] ?? null;
     }
 
-    let progressHtml = `<p class="text-sm text-slate-500">Log a workout to see progress here.</p>`;
+    let progressHtml = `<p class="text-[13px] faint py-4">Log a workout to track your progress.</p>`;
     if (this.selectedExercise) {
       const sessions = sortedWorkouts
         .slice()
@@ -153,56 +148,51 @@ export const GymModule = {
       const bars = sessions.map((s) => {
         const h = Math.round((s.maxWeight / maxVal) * 100);
         return `
-          <div class="flex-1 flex flex-col items-center gap-1 min-w-8">
-            <div class="w-full h-24 flex items-end justify-center">
-              <div class="w-4 rounded-t bg-indigo-400/80" style="height:${h}%" title="${s.maxWeight}kg on ${formatDate(s.date)}"></div>
+          <div class="flex-1 flex flex-col items-center gap-1.5 min-w-8">
+            <span class="text-[10px] num" style="color:var(--ink)">${s.maxWeight}</span>
+            <div class="w-full h-28 flex items-end justify-center">
+              <div class="w-5 rounded-t-[3px]" style="height:${Math.max(h, 3)}%;background:var(--ink)" title="${s.maxWeight}kg on ${formatDate(s.date)}"></div>
             </div>
-            <span class="text-[10px] text-slate-500">${formatDate(s.date)}</span>
-            <span class="text-[10px] text-indigo-300">${s.maxWeight}kg</span>
+            <span class="text-[10px] faint num">${formatDate(s.date)}</span>
           </div>`;
       }).join("");
 
       const exerciseTabs = exerciseNames.map((name) => `
-        <button data-action="select-progress-exercise" data-name="${escapeHtml(name)}"
-                class="px-2.5 py-1 rounded-full text-xs border transition
-                       ${name === this.selectedExercise ? "bg-indigo-500/20 border-indigo-400/60 text-indigo-200" : "border-slate-700 text-slate-400 hover:border-slate-500"}">
-          ${escapeHtml(name)}
-        </button>`).join("");
+        <button data-action="select-progress-exercise" data-name="${escapeHtml(name)}" class="chip ${name === this.selectedExercise ? "chip-on" : ""}">${escapeHtml(name)}</button>`).join("");
 
       progressHtml = `
-        <div class="flex flex-wrap gap-1.5 mb-3">${exerciseTabs}</div>
-        <div class="flex gap-1 overflow-x-auto pb-1">${bars || `<p class="text-sm text-slate-500">No sessions logged for this exercise yet.</p>`}</div>`;
+        <div class="flex flex-wrap gap-1.5 mb-4">${exerciseTabs}</div>
+        <div class="flex gap-1.5 overflow-x-auto pb-1">${bars || `<p class="text-[13px] faint">No sessions logged for this exercise yet.</p>`}</div>`;
     }
 
     this.el.innerHTML = `
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="font-semibold text-slate-100">🏋️ Gym Log</h2>
+      <div class="flex items-center gap-2.5 mb-4">
+        <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("dumbbell", 18)}</span>
+        <h2 class="sect-title">Training</h2>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <h3 class="text-sm font-semibold text-slate-300 mb-2">Log a workout</h3>
-          <div class="flex gap-2 mb-2">
-            <input data-field="draft-date" type="date" value="${this.draft.date}"
-                   class="bg-slate-800/80 border border-slate-700 rounded-lg px-2 py-2 text-sm text-slate-300" />
-            <input data-field="draft-label" value="${escapeHtml(this.draft.label)}" placeholder="Session label (e.g. Push Day)"
-                   class="flex-1 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+          <p class="eyebrow mb-2.5">Log a workout</p>
+          <div class="flex gap-2 mb-2.5">
+            <input data-field="draft-date" type="date" value="${this.draft.date}" class="input" style="width:auto" />
+            <input data-field="draft-label" value="${escapeHtml(this.draft.label)}" placeholder="Session label (e.g. Push Day)" class="input flex-1" />
           </div>
-          <div class="space-y-2 mb-2">${draftHtml}</div>
+          <div class="space-y-2 mb-3">${draftHtml}</div>
           <div class="flex items-center gap-2">
-            <button data-action="draft-add-exercise" class="text-xs text-indigo-300 hover:text-indigo-200 border border-indigo-500/40 rounded-lg px-3 py-1.5">+ Add exercise</button>
+            <button data-action="draft-add-exercise" class="btn btn-ghost btn-sm">${icon("plus", 14)} Add exercise</button>
             <span class="flex-1"></span>
-            <button data-action="save-workout" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Save Workout</button>
+            <button data-action="save-workout" class="btn btn-primary">Save workout</button>
           </div>
 
-          <h3 class="text-sm font-semibold text-slate-300 mt-4 mb-2">History</h3>
+          <p class="eyebrow mt-5 mb-2.5">History</p>
           <ul class="space-y-2 max-h-56 overflow-y-auto pr-1">
-            ${historyHtml || `<li class="text-sm text-slate-500 py-2">No workouts logged yet.</li>`}
+            ${historyHtml || `<li class="text-[13px] faint py-2">No workouts logged yet.</li>`}
           </ul>
         </div>
 
         <div>
-          <h3 class="text-sm font-semibold text-slate-300 mb-2">Progress</h3>
+          <p class="eyebrow mb-2.5">Progress</p>
           ${progressHtml}
         </div>
       </div>`;

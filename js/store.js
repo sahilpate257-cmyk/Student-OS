@@ -1,4 +1,10 @@
-// store.js — single source of truth: state, persistence, pub/sub
+// store.js — single source of truth: state, persistence, pub/sub, Firebase (modular SDK)
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const KEY = "student_os_v1";
 
@@ -10,9 +16,9 @@ const firebaseConfig = {
   messagingSenderId: "756152469935",
   appId: "1:756152469935:web:83fdfba604eb3bc43a875a",
 };
-firebase.initializeApp(firebaseConfig);
-export const auth = firebase.auth();
-export const db = firebase.firestore();
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 function defaultState() {
   return {
@@ -53,8 +59,9 @@ export const Store = {
 
   pushToCloud() {
     if (!this._uid) return;
-    db.collection("users").doc(this._uid).set(
-      { ...this.state, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+    setDoc(
+      doc(db, "users", this._uid),
+      { ...this.state, updatedAt: serverTimestamp() },
       { merge: true }
     ).catch((e) => console.warn("Cloud sync failed", e));
   },

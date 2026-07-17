@@ -1,6 +1,14 @@
-// app.js — bootstrap: auth gate, load store, seed first run, init all modules
+// app.js — bootstrap: auth gate (email/password, forgot-password, optional TOTP 2FA),
+// persistent sessions, cloud sync wiring, module init
 
 import { Store, auth, db, todayISO } from "./store.js";
+import {
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+  onAuthStateChanged, sendPasswordResetEmail,
+  EmailAuthProvider, reauthenticateWithCredential,
+  multiFactor, getMultiFactorResolver, TotpMultiFactorGenerator,
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { CalendarModule } from "./calendar.js";
 import { EnergyRanker } from "./energy.js";
 import { LedgerModule } from "./ledger.js";
@@ -65,45 +73,115 @@ function bootstrapApp() {
 
 const AuthGate = {
   started: false,
+  _unsubSnapshot: null,
+  _mfaResolver: null,
 
   init() {
     const shell = document.getElementById("app-shell");
     const overlay = document.getElementById("auth-overlay");
     const authForm = document.getElementById("auth-form");
+    const mfaForm = document.getElementById("mfa-form");
     const errorEl = document.getElementById("auth-error");
     const statusEl = document.getElementById("auth-status");
-    const signOutBtn = document.getElementById("sign-out");
 
+    const showError = (msg) => {
+      statusEl.textContent = "";
+      errorEl.textContent = msg;
+      errorEl.classList.remove("hidden");
+    };
+    const clearMsgs = () => {
+      errorEl.classList.add("hidden");
+      statusEl.textContent = "";
+    };
+
+    // ---- email + password sign in / sign up ----
     authForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      errorEl.classList.add("hidden");
+      clearMsgs();
       const mode = e.submitter?.dataset.mode || "login";
       const email = document.getElementById("auth-email").value.trim();
       const password = document.getElementById("auth-password").value;
       statusEl.textContent = mode === "signup" ? "Creating account…" : "Signing in…";
       try {
         if (mode === "signup") {
-          await auth.createUserWithEmailAndPassword(email, password);
+          await createUserWithEmailAndPassword(auth, email, password);
         } else {
-          await auth.signInWithEmailAndPassword(email, password);
+          await signInWithEmailAndPassword(auth, email, password);
         }
       } catch (err) {
-        statusEl.textContent = "";
-        errorEl.textContent = err.message;
-        errorEl.classList.remove("hidden");
+        if (err.code === "auth/multi-factor-auth-required") {
+          // 2FA is enabled on this account — ask for the authenticator code
+          this._mfaResolver = getMultiFactorResolver(auth, err);
+          statusEl.textContent = "";
+          authForm.classList.add("hidden");
+          mfaForm.classList.remove("hidden");
+          mfaForm.querySelector("input[name=code]").focus();
+        } else {
+          showError(this.friendlyError(err));
+        }
       }
     });
 
-    signOutBtn.addEventListener("click", () => auth.signOut());
+    // ---- 2FA code step during sign-in ----
+    mfaForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearMsgs();
+      const code = mfaForm.querySelector("input[name=code]").value.trim();
+      if (!/^\d{6}$/.test(code)) { showError("Enter the 6-digit code from your authenticator app."); return; }
+      statusEl.textContent = "Verifying code…";
+      try {
+        const hint = this._mfaResolver.hints.find((h) => h.factorId === "totp") ?? this._mfaResolver.hints[0];
+        const assertion = TotpMultiFactorGenerator.assertionForSignIn(hint.uid, code);
+        await this._mfaResolver.resolveSignIn(assertion);
+        // onAuthStateChanged takes it from here
+      } catch (err) {
+        showError(err.code === "auth/invalid-verification-code" ? "That code isn't right — try the current one in your app." : this.friendlyError(err));
+      }
+    });
+    document.getElementById("mfa-cancel").addEventListener("click", () => {
+      this._mfaResolver = null;
+      mfaForm.classList.add("hidden");
+      mfaForm.querySelector("input[name=code]").value = "";
+      authForm.classList.remove("hidden");
+      clearMsgs();
+    });
 
-    auth.onAuthStateChanged(async (user) => {
+    // ---- forgot password ----
+    document.getElementById("forgot-password").addEventListener("click", async () => {
+      clearMsgs();
+      const email = document.getElementById("auth-email").value.trim();
+      if (!email) { showError("Type your email in the box above first, then click this again."); return; }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        statusEl.textContent = `Password reset email sent to ${email} — check your inbox (and spam).`;
+      } catch (err) {
+        showError(this.friendlyError(err));
+      }
+    });
+
+    // ---- sign out ----
+    document.getElementById("sign-out").addEventListener("click", async () => {
+      if (this._unsubSnapshot) { this._unsubSnapshot(); this._unsubSnapshot = null; }
+      await signOut(auth);
+    });
+
+    // ---- security panel (2FA management) ----
+    document.getElementById("security-btn").addEventListener("click", () => SecurityPanel.toggle());
+
+    // ---- auth state: local persistence means this fires signed-in on return visits ----
+    onAuthStateChanged(auth, async (user) => {
       if (!user) {
         this.started = false;
         Store._uid = null;
+        if (this._unsubSnapshot) { this._unsubSnapshot(); this._unsubSnapshot = null; }
         overlay.classList.remove("hidden");
         shell.classList.add("hidden");
         return;
       }
+      this._mfaResolver = null;
+      mfaForm.classList.add("hidden");
+      authForm.classList.remove("hidden");
+      clearMsgs();
       overlay.classList.add("hidden");
       shell.classList.remove("hidden");
       if (this.started) return; // avoid double-init on token refresh
@@ -112,13 +190,26 @@ const AuthGate = {
     });
   },
 
+  friendlyError(err) {
+    const map = {
+      "auth/invalid-credential": "Wrong email or password.",
+      "auth/wrong-password": "Wrong email or password.",
+      "auth/user-not-found": "No account with that email — use Sign Up to create one.",
+      "auth/email-already-in-use": "That email already has an account — use Log In instead.",
+      "auth/weak-password": "Password needs to be at least 6 characters.",
+      "auth/invalid-email": "That doesn't look like a valid email address.",
+      "auth/too-many-requests": "Too many attempts — wait a minute and try again.",
+    };
+    return map[err.code] ?? err.message;
+  },
+
   async bootstrap(uid) {
     Store._uid = uid;
-    const docRef = db.collection("users").doc(uid);
+    const docRef = doc(db, "users", uid);
 
     try {
-      const snap = await docRef.get();
-      if (snap.exists) {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
         Store.applyRemote(snap.data());
       } else {
         Store.load();
@@ -132,11 +223,175 @@ const AuthGate = {
     }
 
     // real-time sync: pick up changes made from any other signed-in device
-    docRef.onSnapshot((snap) => {
-      if (snap.exists) Store.applyRemote(snap.data());
+    this._unsubSnapshot = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) Store.applyRemote(snap.data());
     });
 
     bootstrapApp();
+    SecurityPanel.init();
+  },
+};
+
+// ---- Security panel: enable / disable TOTP 2FA (authenticator app) ----
+const SecurityPanel = {
+  el: null,
+  open: false,
+  pendingSecret: null,
+
+  init() {
+    if (this.el) { this.render(); return; }
+    this.el = document.getElementById("security-panel");
+
+    this.el.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (action === "close-security") this.toggle(false);
+      else if (action === "copy-secret" && this.pendingSecret) {
+        try { await navigator.clipboard.writeText(this.pendingSecret.secretKey); btn.textContent = "Copied!"; } catch {}
+      } else if (action === "cancel-enroll") {
+        this.pendingSecret = null;
+        this.render();
+      }
+    });
+
+    this.el.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (e.target.id === "enroll-start-form") this.startEnroll(e.target);
+      else if (e.target.id === "enroll-confirm-form") this.confirmEnroll(e.target);
+      else if (e.target.id === "disable-2fa-form") this.disable2fa(e.target);
+    });
+
+    this.render();
+  },
+
+  toggle(force) {
+    this.open = force ?? !this.open;
+    if (!this.open) this.pendingSecret = null;
+    this.el.classList.toggle("hidden", !this.open);
+    if (this.open) { this.render(); this.el.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  },
+
+  msg(text, isError = false) {
+    const m = this.el.querySelector("#security-msg");
+    if (!m) return;
+    m.textContent = text;
+    m.className = `text-xs mb-3 ${isError ? "text-rose-400" : "text-emerald-400"}`;
+  },
+
+  async startEnroll(f) {
+    const password = f.password.value;
+    if (!password) return;
+    this.msg("Checking password…");
+    try {
+      const user = auth.currentUser;
+      const cred = EmailAuthProvider.credential(user.email, password);
+      await reauthenticateWithCredential(user, cred);
+      const session = await multiFactor(user).getSession();
+      this.pendingSecret = await TotpMultiFactorGenerator.generateSecret(session);
+      this.render();
+    } catch (err) {
+      if (err.code === "auth/operation-not-allowed" || /TOTP/i.test(err.message)) {
+        this.msg("2FA isn't switched on for this app yet in the Firebase console (Authentication → Sign-in method → Multi-factor → enable TOTP, which needs the free Identity Platform upgrade).", true);
+      } else if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") {
+        this.msg("Wrong password.", true);
+      } else {
+        this.msg(err.message, true);
+      }
+    }
+  },
+
+  async confirmEnroll(f) {
+    const code = f.code.value.trim();
+    if (!/^\d{6}$/.test(code)) { this.msg("Enter the 6-digit code shown in your authenticator app.", true); return; }
+    this.msg("Verifying…");
+    try {
+      const assertion = TotpMultiFactorGenerator.assertionForEnrollment(this.pendingSecret, code);
+      await multiFactor(auth.currentUser).enroll(assertion, "Authenticator app");
+      this.pendingSecret = null;
+      this.render();
+      this.msg("2FA is on. You'll be asked for a code at every new sign-in.");
+    } catch (err) {
+      this.msg(err.code === "auth/invalid-verification-code" ? "Code didn't match — check your app shows the newest code and try again." : err.message, true);
+    }
+  },
+
+  async disable2fa(f) {
+    const password = f.password.value;
+    const code = f.code.value.trim();
+    this.msg("Checking…");
+    try {
+      const user = auth.currentUser;
+      const cred = EmailAuthProvider.credential(user.email, password);
+      try {
+        await reauthenticateWithCredential(user, cred);
+      } catch (err) {
+        if (err.code !== "auth/multi-factor-auth-required") throw err;
+        const resolver = getMultiFactorResolver(auth, err);
+        const hint = resolver.hints.find((h) => h.factorId === "totp") ?? resolver.hints[0];
+        await resolver.resolveSignIn(TotpMultiFactorGenerator.assertionForSignIn(hint.uid, code));
+      }
+      const enrolled = multiFactor(user).enrolledFactors;
+      for (const factor of enrolled) await multiFactor(user).unenroll(factor);
+      this.render();
+      this.msg("2FA is off — sign-in is back to just email + password.");
+    } catch (err) {
+      this.msg(err.code === "auth/invalid-verification-code" ? "That code isn't right." : err.code === "auth/invalid-credential" ? "Wrong password." : err.message, true);
+    }
+  },
+
+  render() {
+    const user = auth.currentUser;
+    if (!user) return;
+    const enrolled = multiFactor(user).enrolledFactors;
+    const has2fa = enrolled.length > 0;
+
+    let body;
+    if (this.pendingSecret) {
+      const otpauthUrl = this.pendingSecret.generateQrCodeUrl(user.email, "Student OS");
+      body = `
+        <p class="text-sm text-slate-300 mb-2">1 · Open your authenticator app (Google Authenticator, Authy, 1Password…) and add a new account using this setup key:</p>
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
+          <code class="bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm tracking-wider break-all">${this.pendingSecret.secretKey}</code>
+          <button data-action="copy-secret" class="text-xs text-indigo-300 border border-indigo-500/40 rounded-lg px-3 py-1.5">Copy</button>
+        </div>
+        <p class="text-[11px] text-slate-500 mb-3">On this device with an authenticator installed? <a href="${otpauthUrl}" class="text-indigo-300 underline">Tap to add directly</a>. Pick "time-based" if asked.</p>
+        <p class="text-sm text-slate-300 mb-2">2 · Enter the 6-digit code your app now shows, to prove it's linked:</p>
+        <form id="enroll-confirm-form" class="flex gap-2">
+          <input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" required
+                 class="w-28 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm tracking-widest text-center placeholder-slate-600 focus:outline-none focus:border-indigo-400" />
+          <button type="submit" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Turn on 2FA</button>
+          <button type="button" data-action="cancel-enroll" class="text-sm text-slate-400 hover:text-slate-200 px-2">Cancel</button>
+        </form>`;
+    } else if (has2fa) {
+      body = `
+        <p class="text-sm text-emerald-300 mb-3">✓ 2FA is on — every new sign-in needs a code from your authenticator app.</p>
+        <p class="text-sm text-slate-300 mb-2">To turn it off, confirm your password and a current code:</p>
+        <form id="disable-2fa-form" class="flex flex-wrap gap-2">
+          <input name="password" type="password" placeholder="Password" required autocomplete="current-password"
+                 class="w-44 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+          <input name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="123456" required
+                 class="w-28 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm tracking-widest text-center placeholder-slate-600 focus:outline-none focus:border-indigo-400" />
+          <button type="submit" class="bg-rose-500/80 hover:bg-rose-500 text-white rounded-lg px-4 py-2 text-sm font-medium">Turn off 2FA</button>
+        </form>`;
+    } else {
+      body = `
+        <p class="text-sm text-slate-300 mb-3">2FA is <span class="text-slate-100 font-medium">off</span>. Turn it on to require a 6-digit code from an authenticator app at every new sign-in — your data stays safe even if someone learns your password.</p>
+        <form id="enroll-start-form" class="flex flex-wrap gap-2">
+          <input name="password" type="password" placeholder="Confirm your password" required autocomplete="current-password"
+                 class="w-52 bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
+          <button type="submit" class="bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg px-4 py-2 text-sm font-medium">Set up 2FA</button>
+        </form>`;
+    }
+
+    this.el.innerHTML = `
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="font-semibold text-slate-100">🔐 Security</h2>
+        <button data-action="close-security" class="text-slate-500 hover:text-slate-300 px-2">✕</button>
+      </div>
+      <p class="text-[11px] text-slate-500 mb-3">Signed in as ${user.email} · you stay signed in on this device until you sign out.</p>
+      <p id="security-msg" class="text-xs mb-3"></p>
+      ${body}`;
   },
 };
 

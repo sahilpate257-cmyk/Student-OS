@@ -378,7 +378,7 @@ export const PortfolioModule = {
     const currencyToggle = ["£", "$"].map((c) => `
       <button data-action="set-portfolio-currency" data-currency="${c}"
               class="w-7 h-7 rounded-md text-[13px] font-semibold transition ${cur === c ? "" : "faint"}"
-              style="${cur === c ? "background:var(--ink);color:#FBFAF6" : ""}">${c}</button>`).join("");
+              style="${cur === c ? "background:var(--ink);color:var(--on-ink)" : ""}">${c}</button>`).join("");
 
     const buyForm = this.showBuyForm ? `
       <p id="buy-form-error" class="hidden text-[12px] neg mb-2"></p>

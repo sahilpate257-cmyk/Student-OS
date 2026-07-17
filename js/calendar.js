@@ -80,7 +80,7 @@ export const CalendarModule = {
         .join("");
       cells += `
         <div class="aspect-square flex flex-col items-center justify-center rounded-lg text-[13px] transition"
-             style="${isToday ? "background:var(--ink);color:#FBFAF6;font-weight:600" : "color:var(--ink-muted)"}"
+             style="${isToday ? "background:var(--ink);color:var(--on-ink);font-weight:600" : "color:var(--ink-muted)"}"
              ${isToday ? "" : 'onmouseover="this.style.background=\'var(--sunken)\'" onmouseout="this.style.background=\'\'"'}>
           <span class="num">${d}</span>
           <span class="flex gap-0.5 h-1.5 mt-0.5">${dots}</span>

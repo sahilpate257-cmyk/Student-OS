@@ -24,6 +24,8 @@ const P = {
   briefcase: '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
   sparkle: '<path d="M9.9 2.6 8.5 6.4a2 2 0 0 1-1.1 1.1l-3.8 1.4a.5.5 0 0 0 0 .9l3.8 1.4a2 2 0 0 1 1.1 1.1l1.4 3.8a.5.5 0 0 0 .9 0l1.4-3.8a2 2 0 0 1 1.1-1.1l3.8-1.4a.5.5 0 0 0 0-.9l-3.8-1.4a2 2 0 0 1-1.1-1.1l-1.4-3.8a.5.5 0 0 0-.9 0z"/><path d="M18 5h4"/><path d="M20 3v4"/>',
   logo: '<path d="M12 2 4 7v10l8 5 8-5V7z"/><path d="m12 22V12"/><path d="m4 7 8 5 8-5"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
 };
 
 export function icon(name, size = 18, extraClass = "") {

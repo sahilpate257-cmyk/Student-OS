@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ledgerly — Your money, in command</title>
   <meta name="description" content="The command centre for people with more than one income stream." />
+  <script>(function(){try{var t=localStorage.getItem('ledgerly_theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,11 +32,41 @@
       --neg-soft: #F6E9E2;
       --gold: #B58A2E;        /* highlight accent, used sparingly */
       --ring: #1B1A16;
+      --on-ink: #FBFAF6;      /* text/glyph on ink-filled surfaces */
+      --header-bg: rgba(244,242,236,.82);
+      --nav-bg: rgba(244,242,236,.94);
+      --scroll: #D9D4C7;
       --shadow-sm: 0 1px 2px rgba(27,26,22,.04), 0 1px 3px rgba(27,26,22,.05);
       --shadow-md: 0 4px 12px rgba(27,26,22,.05), 0 2px 4px rgba(27,26,22,.04);
       --shadow-lg: 0 12px 32px rgba(27,26,22,.08), 0 4px 10px rgba(27,26,22,.04);
       --r-card: 16px; --r-btn: 10px; --r-chip: 999px; --r-input: 10px;
     }
+    :root[data-theme="dark"] {
+      --bg: #171512;          /* warm charcoal, not blue-black */
+      --surface: #201D18;
+      --surface-2: #26231D;
+      --sunken: #1C1A15;
+      --border: #322E27;
+      --border-2: #423D34;
+      --ink: #F1ECE1;         /* warm off-white */
+      --ink-muted: #A79F90;
+      --ink-faint: #6F685B;
+      --pos: #5FB98A;
+      --pos-soft: #1C2E24;
+      --neg: #E0906F;
+      --neg-soft: #33231B;
+      --gold: #D4A24A;
+      --ring: #F1ECE1;
+      --on-ink: #171512;      /* dark glyph on the now-light ink */
+      --header-bg: rgba(23,21,18,.82);
+      --nav-bg: rgba(23,21,18,.94);
+      --scroll: #423D34;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+      --shadow-md: 0 4px 14px rgba(0,0,0,.35);
+      --shadow-lg: 0 16px 40px rgba(0,0,0,.5);
+    }
+    :root[data-theme="dark"] select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A79F90' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+    :root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .5; }
     * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     body { background: var(--bg); color: var(--ink); font-family: 'Manrope', system-ui, sans-serif; }
     .font-display { font-family: 'Fraunces', Georgia, serif; }
@@ -43,9 +74,9 @@
 
     /* scrollbars */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-thumb { background: #D9D4C7; border-radius: 6px; }
-    ::-webkit-scrollbar-thumb:hover { background: #C7C1B0; }
+    ::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
+    body, .card, .input, .btn, .chip, .well { transition: background-color .25s ease, border-color .25s ease, color .25s ease; }
     input[type="date"]::-webkit-calendar-picker-indicator { opacity: .5; cursor: pointer; }
 
     /* icons */
@@ -68,7 +99,7 @@
            border-radius: var(--r-btn); padding: 9px 15px; border:1px solid transparent; cursor:pointer; transition:.15s ease;
            white-space: nowrap; }
     .btn:disabled { opacity:.5; cursor:default; }
-    .btn-primary { background: var(--ink); color: #FBFAF6; }
+    .btn-primary { background: var(--ink); color: var(--on-ink); }
     .btn-primary:hover:not(:disabled) { background:#33302A; }
     .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--border-2); }
     .btn-ghost:hover:not(:disabled) { background: var(--surface-2); border-color:#C9C3B4; }
@@ -92,7 +123,7 @@
     .chip { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; padding:6px 12px;
             border-radius: var(--r-chip); border:1px solid var(--border-2); color: var(--ink-muted); background:var(--surface); cursor:pointer; transition:.15s; }
     .chip:hover { border-color:#C9C3B4; color:var(--ink); }
-    .chip-on { background: var(--ink); color:#FBFAF6; border-color: var(--ink); }
+    .chip-on { background: var(--ink); color:var(--on-ink); border-color: var(--ink); }
 
     .well { background: var(--sunken); border-radius: 12px; }
     .divide-row { border-top:1px solid var(--border); }
@@ -121,7 +152,7 @@
   <div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-5" style="background:var(--bg)">
     <div class="w-full max-w-[380px]">
       <div class="flex items-center gap-2.5 mb-7 justify-center">
-        <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--ink);color:#FBFAF6">
+        <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--ink);color:var(--on-ink)">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 7v10l8 5 8-5V7z"/><path d="m4 7 8 5 8-5"/><path d="M12 22V12"/></svg>
         </span>
         <span class="font-display text-[22px] font-medium tracking-tight">Ledgerly</span>
@@ -156,16 +187,17 @@
 
   <!-- ============ APP ============ -->
   <div id="app-shell" class="hidden">
-    <header class="sticky top-0 z-30" style="background:rgba(244,242,236,.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)">
+    <header class="sticky top-0 z-30" style="background:var(--header-bg);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)">
       <div class="max-w-6xl mx-auto flex items-center gap-3 px-4 lg:px-6 py-3">
         <div class="flex items-center gap-2.5">
-          <span class="grid place-items-center w-8 h-8 rounded-[9px]" style="background:var(--ink);color:#FBFAF6">
+          <span class="grid place-items-center w-8 h-8 rounded-[9px]" style="background:var(--ink);color:var(--on-ink)">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 7v10l8 5 8-5V7z"/><path d="m4 7 8 5 8-5"/><path d="M12 22V12"/></svg>
           </span>
           <span class="font-display text-[19px] font-medium tracking-tight hidden sm:block">Ledgerly</span>
         </div>
         <span id="header-date" class="text-[13px] muted hidden md:block ml-1"></span>
         <span class="flex-1"></span>
+        <button id="theme-btn" title="Toggle theme" class="btn-icon"></button>
         <button id="security-btn" title="Security & 2FA" class="btn-icon"></button>
         <button id="sign-out" title="Sign out" class="btn-icon"></button>
         <button id="quick-add" class="btn btn-primary btn-sm ml-1"></button>
@@ -185,7 +217,7 @@
     </main>
 
     <!-- mobile bottom nav -->
-    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30" style="background:rgba(244,242,236,.94);backdrop-filter:blur(12px);border-top:1px solid var(--border)">
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-30" style="background:var(--nav-bg);backdrop-filter:blur(12px);border-top:1px solid var(--border)">
       <div class="grid grid-cols-6 max-w-lg mx-auto">
         <button data-nav="portfolio-module" class="nav-btn"></button>
         <button data-nav="ledger-module" class="nav-btn"></button>

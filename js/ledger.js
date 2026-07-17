@@ -123,7 +123,7 @@ export const LedgerModule = {
     const currencyToggle = ["£", "$"].map((c) => `
       <button data-action="set-currency" data-currency="${c}"
               class="w-7 h-7 rounded-md text-[13px] font-semibold transition ${cur === c ? "" : "faint"}"
-              style="${cur === c ? "background:var(--ink);color:#FBFAF6" : ""}">${c}</button>`).join("");
+              style="${cur === c ? "background:var(--ink);color:var(--on-ink)" : ""}">${c}</button>`).join("");
 
     this.el.innerHTML = `
       <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">

@@ -61,6 +61,13 @@ const NAV = [
   { id: "gym-module", icon: "dumbbell", label: "Training" },
 ];
 
+function applyTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  try { localStorage.setItem("ledgerly_theme", t); } catch (e) {}
+  const b = document.getElementById("theme-btn");
+  if (b) b.innerHTML = icon(t === "dark" ? "sun" : "moon", 17);
+}
+
 function bootstrapApp() {
   document.getElementById("header-date").textContent =
     new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
@@ -69,6 +76,12 @@ function bootstrapApp() {
   document.getElementById("security-btn").innerHTML = icon("shield", 17);
   document.getElementById("sign-out").innerHTML = icon("logout", 17);
   document.getElementById("quick-add").innerHTML = icon("plus", 16) + "<span>Capture</span>";
+
+  // theme toggle (device-level preference, applied pre-paint by the head script)
+  applyTheme(document.documentElement.getAttribute("data-theme") || "light");
+  document.getElementById("theme-btn").addEventListener("click", () => {
+    applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
 
   // mobile nav icons + labels
   document.querySelectorAll("[data-nav]").forEach((btn) => {

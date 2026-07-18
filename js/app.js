@@ -17,6 +17,7 @@ import { BrainDump } from "./notes.js";
 import { GymModule } from "./gym.js";
 import { PortfolioModule } from "./portfolio.js";
 import { IntakeModule } from "./intake.js";
+import { InsightsModule } from "./insights.js";
 
 function seedDemoData() {
   const t = new Date();
@@ -55,11 +56,12 @@ function seedDemoData() {
 
 const NAV = [
   { id: "portfolio-module", icon: "trending", label: "Invest" },
-  { id: "ledger-module", icon: "wallet", label: "Cashflow" },
+  { id: "ledger-module", icon: "wallet", label: "Cash" },
+  { id: "insights-module", icon: "insights", label: "Insights" },
   { id: "energy-module", icon: "gauge", label: "Focus" },
-  { id: "calendar-module", icon: "calendar", label: "Deadlines" },
+  { id: "calendar-module", icon: "calendar", label: "Due" },
   { id: "notes-module", icon: "notebook", label: "Notes" },
-  { id: "gym-module", icon: "dumbbell", label: "Training" },
+  { id: "gym-module", icon: "dumbbell", label: "Gym" },
 ];
 
 function applyTheme(t) {
@@ -90,7 +92,7 @@ function bootstrapApp() {
     if (meta) btn.innerHTML = icon(meta.icon, 19) + `<span>${meta.label}</span>`;
   });
 
-  [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule].forEach((m) => m.init());
+  [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule].forEach((m) => m.init());
 
   // header quick-add jumps straight to brain dump input
   document.getElementById("quick-add").addEventListener("click", () => {

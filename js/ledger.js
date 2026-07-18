@@ -39,6 +39,7 @@ export const LedgerModule = {
       const f = e.target;
       const amount = parseFloat(f.amount.value);
       if (!amount || amount <= 0) return;
+      const hours = parseFloat(f.hours.value);
       Store.add("transactions", {
         id: Store.uid("tx"),
         type: f.type.value,
@@ -46,6 +47,7 @@ export const LedgerModule = {
         category: f.category.value.trim() || "General",
         description: f.description.value.trim(),
         date: f.date.value || todayISO(),
+        ...(f.type.value === "income" && hours > 0 ? { hours } : {}),
       });
       f.reset();
       f.date.value = todayISO();
@@ -164,12 +166,13 @@ export const LedgerModule = {
         ${rows || `<li class="py-4 text-[13px] faint text-center">No transactions logged this month.</li>`}
       </ul>
 
-      <form id="tx-form" class="grid grid-cols-2 sm:grid-cols-6 gap-2">
+      <form id="tx-form" class="grid grid-cols-2 sm:grid-cols-7 gap-2">
         <select name="type" class="input">
           <option value="income">Income</option>
           <option value="expense">Expense</option>
         </select>
         <input name="amount" type="number" step="0.01" min="0.01" placeholder="0.00" required class="input num" />
+        <input name="hours" type="number" step="0.25" min="0" placeholder="hrs" title="Hours spent (income only) — powers your hourly-rate insight" class="input num" />
         <input name="category" placeholder="Category" class="input" />
         <input name="description" placeholder="Description" class="input col-span-2 sm:col-span-1" />
         <input name="date" type="date" value="${todayISO()}" class="input" />

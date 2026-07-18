@@ -16,6 +16,7 @@ import { LedgerModule } from "./ledger.js";
 import { BrainDump } from "./notes.js";
 import { GymModule } from "./gym.js";
 import { PortfolioModule } from "./portfolio.js";
+import { IntakeModule } from "./intake.js";
 
 function seedDemoData() {
   const t = new Date();
@@ -89,7 +90,7 @@ function bootstrapApp() {
     if (meta) btn.innerHTML = icon(meta.icon, 19) + `<span>${meta.label}</span>`;
   });
 
-  [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule, PortfolioModule].forEach((m) => m.init());
+  [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule].forEach((m) => m.init());
 
   // header quick-add jumps straight to brain dump input
   document.getElementById("quick-add").addEventListener("click", () => {

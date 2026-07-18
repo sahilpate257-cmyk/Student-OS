@@ -1,4 +1,5 @@
-// gym.js — GymModule: full workout logger (exercises/sets/reps/weight) + per-lift progress chart
+// gym.js — GymModule: workout logger with inline last-performance, exercise
+// autocomplete, live PR detection, and a per-lift progress chart.
 
 import { Store, todayISO, escapeHtml, formatDate } from "./store.js";
 import { icon } from "./icons.js";
@@ -45,11 +46,15 @@ export const GymModule = {
       } else if (t.dataset.field === "draft-label") {
         this.draft.label = t.value;
       } else if (t.dataset.field === "ex-name") {
-        this.draft.exercises[Number(t.dataset.exidx)].name = t.value;
+        const exi = Number(t.dataset.exidx);
+        this.draft.exercises[exi].name = t.value;
+        this.updateExerciseHints(exi); // live "last time" + placeholders + PR flags
       } else if (t.dataset.field === "set-reps") {
         this.draft.exercises[Number(t.dataset.exidx)].sets[Number(t.dataset.setidx)].reps = t.value;
       } else if (t.dataset.field === "set-weight") {
-        this.draft.exercises[Number(t.dataset.exidx)].sets[Number(t.dataset.setidx)].weight = t.value;
+        const exi = Number(t.dataset.exidx), si = Number(t.dataset.setidx);
+        this.draft.exercises[exi].sets[si].weight = t.value;
+        this.updatePRBadge(exi, si); // live "you're setting a PR" flag
       }
     });
 
@@ -92,25 +97,108 @@ export const GymModule = {
     return [...names].sort((a, b) => a.localeCompare(b));
   },
 
+  // most recent past session containing this exercise (case-insensitive)
+  findLast(name) {
+    const n = (name || "").trim().toLowerCase();
+    if (!n) return null;
+    const sorted = [...Store.state.workouts].sort((a, b) => b.date.localeCompare(a.date));
+    for (const w of sorted) {
+      const ex = w.exercises.find((e) => e.name.trim().toLowerCase() === n);
+      if (ex) return { date: w.date, sets: ex.sets };
+    }
+    return null;
+  },
+
+  // heaviest weight ever lifted for this exercise across all saved history
+  bestWeight(name) {
+    const n = (name || "").trim().toLowerCase();
+    if (!n) return 0;
+    let best = 0;
+    Store.state.workouts.forEach((w) =>
+      w.exercises.forEach((e) => {
+        if (e.name.trim().toLowerCase() === n) e.sets.forEach((s) => { if (s.weight > best) best = s.weight; });
+      })
+    );
+    return best;
+  },
+
+  // best estimated one-rep max (Epley) for this exercise
+  bestOneRepMax(name) {
+    const n = (name || "").trim().toLowerCase();
+    let best = 0;
+    Store.state.workouts.forEach((w) =>
+      w.exercises.forEach((e) => {
+        if (e.name.trim().toLowerCase() === n) e.sets.forEach((s) => {
+          const e1 = s.weight * (1 + s.reps / 30);
+          if (e1 > best) best = e1;
+        });
+      })
+    );
+    return best;
+  },
+
+  // ---- live surgical updates (avoid full re-render so focus is kept while typing) ----
+  updateExerciseHints(exi) {
+    const ex = this.draft.exercises[exi];
+    const last = this.findLast(ex.name);
+    const hint = this.el.querySelector(`#exhint-${exi}`);
+    if (hint) {
+      hint.innerHTML = last
+        ? `Last · ${formatDate(last.date)}: ${last.sets.map((s) => `${s.reps}×${s.weight}kg`).join(", ")}`
+        : "";
+    }
+    ex.sets.forEach((s, si) => {
+      const lp = last?.sets[si];
+      const rEl = this.el.querySelector(`[data-field="set-reps"][data-exidx="${exi}"][data-setidx="${si}"]`);
+      const wEl = this.el.querySelector(`[data-field="set-weight"][data-exidx="${exi}"][data-setidx="${si}"]`);
+      if (rEl) rEl.placeholder = lp ? String(lp.reps) : "reps";
+      if (wEl) wEl.placeholder = lp ? String(lp.weight) : "kg";
+      this.updatePRBadge(exi, si);
+    });
+  },
+
+  updatePRBadge(exi, si) {
+    const ex = this.draft.exercises[exi];
+    const best = this.bestWeight(ex.name);
+    const w = parseFloat(ex.sets[si].weight);
+    const badge = this.el.querySelector(`#pr-${exi}-${si}`);
+    if (!badge) return;
+    badge.style.display = best > 0 && w > best ? "" : "none";
+  },
+
   render() {
-    const draftHtml = this.draft.exercises.map((ex, exi) => `
+    const exerciseNames = this.allExerciseNames();
+    const datalist = `<datalist id="exercise-list">${exerciseNames.map((n) => `<option value="${escapeHtml(n)}"></option>`).join("")}</datalist>`;
+
+    const draftHtml = this.draft.exercises.map((ex, exi) => {
+      const last = this.findLast(ex.name);
+      const best = this.bestWeight(ex.name);
+      return `
       <div class="well p-3 space-y-2">
         <div class="flex items-center gap-2">
-          <input data-field="ex-name" data-exidx="${exi}" value="${escapeHtml(ex.name)}" placeholder="Exercise name…" class="input flex-1" />
+          <input data-field="ex-name" data-exidx="${exi}" list="exercise-list" value="${escapeHtml(ex.name)}" placeholder="Exercise name…" class="input flex-1" autocomplete="off" />
           <button data-action="draft-remove-exercise" data-idx="${exi}" class="btn-icon" style="width:30px;height:30px">${icon("x", 15)}</button>
         </div>
+        <div id="exhint-${exi}" class="text-[11px] faint num px-1 min-h-3">${last ? `Last · ${formatDate(last.date)}: ${last.sets.map((s) => `${s.reps}×${s.weight}kg`).join(", ")}` : ""}</div>
         <div class="space-y-1.5">
-          ${ex.sets.map((s, si) => `
+          ${ex.sets.map((s, si) => {
+            const lp = last?.sets[si];
+            const wNum = parseFloat(s.weight);
+            const showPR = best > 0 && wNum > best;
+            return `
             <div class="flex items-center gap-2 pl-1">
               <span class="text-[11px] faint w-9">Set ${si + 1}</span>
-              <input data-field="set-reps" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" value="${s.reps}" placeholder="reps" class="input num" style="width:70px;padding:6px 10px" />
+              <input data-field="set-reps" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" value="${s.reps}" placeholder="${lp ? lp.reps : "reps"}" class="input num" style="width:70px;padding:6px 10px" />
               <span class="faint text-xs">×</span>
-              <input data-field="set-weight" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" step="0.5" value="${s.weight}" placeholder="kg" class="input num" style="width:70px;padding:6px 10px" />
+              <input data-field="set-weight" data-exidx="${exi}" data-setidx="${si}" type="number" min="0" step="0.5" value="${s.weight}" placeholder="${lp ? lp.weight : "kg"}" class="input num" style="width:70px;padding:6px 10px" />
+              <span id="pr-${exi}-${si}" class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:var(--pos-soft);color:var(--pos);display:${showPR ? "" : "none"}">PR</span>
               <button data-action="draft-remove-set" data-idx="${exi}" data-sidx="${si}" class="btn-icon" style="width:26px;height:26px">${icon("x", 13)}</button>
-            </div>`).join("")}
+            </div>`;
+          }).join("")}
           <button data-action="draft-add-set" data-idx="${exi}" class="text-[12px] font-semibold pl-1 flex items-center gap-1" style="color:var(--ink)">${icon("plus", 13)} Add set</button>
         </div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
 
     const sortedWorkouts = [...Store.state.workouts].sort((a, b) => b.date.localeCompare(a.date));
     const historyHtml = sortedWorkouts.map((w) => `
@@ -126,7 +214,6 @@ export const GymModule = {
         </ul>
       </li>`).join("");
 
-    const exerciseNames = this.allExerciseNames();
     if (!this.selectedExercise || !exerciseNames.includes(this.selectedExercise)) {
       this.selectedExercise = exerciseNames[exerciseNames.length - 1] ?? null;
     }
@@ -157,15 +244,31 @@ export const GymModule = {
           </div>`;
       }).join("");
 
+      const best = this.bestWeight(this.selectedExercise);
+      const e1rm = this.bestOneRepMax(this.selectedExercise);
+      const statRow = `
+        <div class="grid grid-cols-2 gap-2.5 mb-4">
+          <div class="well px-3.5 py-2.5">
+            <p class="eyebrow mb-1">Personal best</p>
+            <p class="font-display text-[18px] font-medium num leading-none">${best}kg</p>
+          </div>
+          <div class="well px-3.5 py-2.5">
+            <p class="eyebrow mb-1">Est. 1RM</p>
+            <p class="font-display text-[18px] font-medium num leading-none">${Math.round(e1rm)}kg</p>
+          </div>
+        </div>`;
+
       const exerciseTabs = exerciseNames.map((name) => `
         <button data-action="select-progress-exercise" data-name="${escapeHtml(name)}" class="chip ${name === this.selectedExercise ? "chip-on" : ""}">${escapeHtml(name)}</button>`).join("");
 
       progressHtml = `
         <div class="flex flex-wrap gap-1.5 mb-4">${exerciseTabs}</div>
+        ${statRow}
         <div class="flex gap-1.5 overflow-x-auto pb-1">${bars || `<p class="text-[13px] faint">No sessions logged for this exercise yet.</p>`}</div>`;
     }
 
     this.el.innerHTML = `
+      ${datalist}
       <div class="flex items-center gap-2.5 mb-4">
         <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("dumbbell", 18)}</span>
         <h2 class="sect-title">Training</h2>

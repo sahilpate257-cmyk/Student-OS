@@ -144,13 +144,213 @@
     @keyframes fade { from { opacity:0; transform: translateY(6px); } }
 
     a { color: inherit; }
+
+    /* ===== landing ===== */
+    .lp-wrap { max-width: 1060px; margin: 0 auto; padding-left: 22px; padding-right: 22px; }
+    .lp-nav { position: sticky; top: 0; z-index: 40; background: var(--header-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .lp-h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size: clamp(36px, 6.2vw, 60px); line-height:1.03; letter-spacing:-.022em; }
+    .lp-h2 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size: clamp(25px, 4vw, 37px); line-height:1.08; letter-spacing:-.015em; }
+    .lp-lead { font-size: clamp(15.5px,1.7vw,18.5px); line-height:1.55; color: var(--ink-muted); }
+    .lp-sec { padding: clamp(52px, 8vw, 92px) 0; }
+    .lp-mock { background: var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow: var(--shadow-lg); }
+    .lp-rule { border:none; border-top:1px solid var(--border); }
+    .lp-fade { animation: lpFade .75s cubic-bezier(.22,1,.36,1) backwards; }
+    @keyframes lpFade { from { opacity:0; transform: translateY(14px);} }
+    .lp-tile { background: var(--surface); border:1px solid var(--border); border-radius:14px; padding:15px 16px; }
+    .lp-tile .ic, .lp-ic { color: var(--ink-muted); }
   </style>
 </head>
 <body class="min-h-screen antialiased">
 
+  <!-- ============ LANDING ============ -->
+  <div id="landing" class="hidden">
+    <nav class="lp-nav">
+      <div class="lp-wrap flex items-center justify-between py-3.5">
+        <div class="flex items-center gap-2.5">
+          <span class="grid place-items-center w-8 h-8 rounded-[9px]" style="background:var(--ink);color:var(--on-ink)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 7v10l8 5 8-5V7z"/><path d="m4 7 8 5 8-5"/><path d="M12 22V12"/></svg>
+          </span>
+          <span class="font-display text-[19px] font-medium tracking-tight">Ledgerly</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button data-goto="auth" class="btn btn-ghost btn-sm">Log in</button>
+          <button data-goto="auth" class="btn btn-primary btn-sm">Get started</button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- hero -->
+    <section class="lp-wrap lp-sec grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div class="lp-fade">
+        <p class="eyebrow mb-4">For students building something on the side</p>
+        <h1 class="lp-h1 mb-5">Your degree, your hustle, your money — in one calm place.</h1>
+        <p class="lp-lead mb-8 max-w-[520px]">Ledgerly keeps your deadlines, side income, investments and training together — and answers the one question no other app can: is your hustle actually paying off?</p>
+        <div class="flex flex-wrap gap-3 mb-4">
+          <button data-goto="auth" class="btn btn-primary" style="padding:12px 22px;font-size:15px">Get started free</button>
+          <button data-goto="auth" class="btn btn-ghost" style="padding:12px 22px;font-size:15px">Log in</button>
+        </div>
+        <p class="text-[12.5px] faint">Free to use · no card needed · your data stays yours</p>
+      </div>
+
+      <div class="lp-fade" style="animation-delay:.1s">
+        <div class="lp-mock p-6 max-w-[430px] mx-auto">
+          <p class="eyebrow mb-1.5">This tax year</p>
+          <p class="font-display num" style="font-size:40px;font-weight:500;line-height:1">£4,820</p>
+          <p class="text-[12.5px] pos num mt-1.5">+£1,410 this month</p>
+          <hr class="lp-rule my-5" />
+          <p class="eyebrow mb-3">Effective hourly rate</p>
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-2 text-[13.5px] font-medium"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:var(--pos-soft);color:var(--pos)">BEST</span> Tutoring</span>
+              <span class="num font-semibold text-[14px]">£40<span class="faint font-normal text-[11px]">/hr</span></span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-[13.5px] font-medium">Clipping</span>
+              <span class="num font-semibold text-[14px]">£24<span class="faint font-normal text-[11px]">/hr</span></span>
+            </div>
+          </div>
+          <hr class="lp-rule my-5" />
+          <div class="flex items-center gap-4">
+            <svg width="70" height="70" viewBox="0 0 72 72" style="flex:none">
+              <g transform="rotate(-90 36 36)" fill="none" stroke-width="12">
+                <circle cx="36" cy="36" r="26" stroke="#2E6F5B" stroke-dasharray="81.7 163.4" stroke-dashoffset="0"/>
+                <circle cx="36" cy="36" r="26" stroke="#C4913E" stroke-dasharray="49 163.4" stroke-dashoffset="-81.7"/>
+                <circle cx="36" cy="36" r="26" stroke="#46688C" stroke-dasharray="32.7 163.4" stroke-dashoffset="-130.7"/>
+              </g>
+            </svg>
+            <div class="flex-1">
+              <p class="eyebrow mb-1">Portfolio</p>
+              <p class="font-display num text-[20px] font-medium leading-none">£3,199</p>
+              <p class="text-[11.5px] pos num mt-1">+£317 · +11%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- feature: hourly -->
+    <section class="lp-sec" style="background:var(--surface)">
+      <div class="lp-wrap grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div>
+          <p class="eyebrow mb-3">Is it worth it?</p>
+          <h2 class="lp-h2 mb-4">Know which hustle actually pays.</h2>
+          <p class="lp-lead">Log the hours next to what you earned, and Ledgerly works out your real rate per hour for everything you do. It's the number most side-hustlers never calculate — and the one that tells you where your time is best spent.</p>
+        </div>
+        <div class="lp-mock p-6">
+          <p class="eyebrow mb-4">Effective hourly rate · this month</p>
+          <div class="space-y-4">
+            <div class="flex items-end justify-between">
+              <span class="flex items-center gap-2 text-[15px] font-medium"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:var(--pos-soft);color:var(--pos)">BEST</span> Tutoring</span>
+              <span class="font-display num text-[24px] font-medium">£40<span class="faint text-[13px] font-normal">/hr</span></span>
+            </div>
+            <div class="flex items-end justify-between">
+              <span class="text-[15px] font-medium">Design work</span>
+              <span class="font-display num text-[24px] font-medium">£31<span class="faint text-[13px] font-normal">/hr</span></span>
+            </div>
+            <div class="flex items-end justify-between">
+              <span class="text-[15px] font-medium">Clipping</span>
+              <span class="font-display num text-[24px] font-medium">£24<span class="faint text-[13px] font-normal">/hr</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- feature: tax -->
+    <section class="lp-sec">
+      <div class="lp-wrap grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div class="lp-mock p-6 lg:order-1 order-2">
+          <p class="eyebrow mb-2">Tax position · UK</p>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[12px] muted num">£1,410 used</span>
+            <span class="text-[12px] faint num">£1,000 allowance</span>
+          </div>
+          <div class="h-2 rounded-full overflow-hidden mb-4" style="background:var(--sunken)">
+            <div class="h-full rounded-full" style="width:100%;background:var(--gold)"></div>
+          </div>
+          <p class="text-[13.5px]" style="color:var(--ink)">You've passed the £1,000 trading allowance — you'll likely need to <b>register for Self Assessment</b>, even if you owe nothing.</p>
+          <div class="well px-4 py-3 mt-4">
+            <p class="eyebrow mb-1">Cautious buffer to set aside</p>
+            <p class="font-display num text-[22px] font-medium leading-none">£82</p>
+          </div>
+        </div>
+        <div class="lg:order-2 order-1">
+          <p class="eyebrow mb-3">No nasty surprises</p>
+          <h2 class="lp-h2 mb-4">Always know where you stand with tax.</h2>
+          <p class="lp-lead">Side income and tax is the thing students worry about and never quite understand. Ledgerly tracks your earnings against the UK trading allowance, flags when you'll need to register, and suggests a safe amount to set aside — in plain English, clearly marked as guidance.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- feature: AI intake -->
+    <section class="lp-sec" style="background:var(--surface)">
+      <div class="lp-wrap grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div>
+          <p class="eyebrow mb-3">The boring part, done for you</p>
+          <h2 class="lp-h2 mb-4">Paste anything. It fills itself in.</h2>
+          <p class="lp-lead">Drop in a bank statement, a syllabus, or messy notes. Ledgerly reads it and turns it into clean transactions, deadlines and tasks — you just review and confirm. No more typing everything twice.</p>
+        </div>
+        <div class="lp-mock p-6">
+          <div class="well p-3.5 mb-3 text-[12px] num" style="color:var(--ink-muted);font-family:ui-monospace,monospace;line-height:1.6">04 Jul&nbsp; CAFE VERDE DEPOSIT&nbsp; +250.00<br>06 Jul&nbsp; SPOTIFY&nbsp; −11.99<br>Essay 2 due 15 Oct</div>
+          <div class="flex justify-center mb-3" style="color:var(--ink-faint)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-[13px]"><span class="font-medium">Café Verde deposit</span><span class="pos num font-semibold">+£250</span></div>
+            <div class="flex items-center justify-between text-[13px]"><span class="font-medium">Spotify</span><span class="neg num font-semibold">−£11.99</span></div>
+            <div class="flex items-center justify-between text-[13px]"><span class="font-medium">Essay 2</span><span class="tag tag-uni">Uni · 15 Oct</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- feature: one place -->
+    <section class="lp-sec">
+      <div class="lp-wrap">
+        <div class="max-w-[640px] mb-9">
+          <p class="eyebrow mb-3">One calm dashboard</p>
+          <h2 class="lp-h2 mb-4">Everything a busy life needs, in one place.</h2>
+          <p class="lp-lead">Stop juggling six apps. Your money, your studies and your training — together, synced across every device, in a design that stays out of your way.</p>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg><p class="text-[13px] font-semibold mt-2">Investing</p></div>
+          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg><p class="text-[13px] font-semibold mt-2">Cashflow</p></div>
+          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg><p class="text-[13px] font-semibold mt-2">Focus</p></div>
+          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><p class="text-[13px] font-semibold mt-2">Deadlines</p></div>
+          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a1 1 0 0 1 3 3l-9 9-3.9 1 1-3.9z"/></svg><p class="text-[13px] font-semibold mt-2">Notes</p></div>
+          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg><p class="text-[13px] font-semibold mt-2">Training</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- final CTA -->
+    <section class="lp-sec">
+      <div class="lp-wrap">
+        <div class="p-10 sm:p-14 text-center rounded-[20px]" style="background:var(--ink)">
+          <h2 class="lp-h2 mb-3" style="color:var(--on-ink)">Start running your money like a business.</h2>
+          <p class="mb-7 text-[15px]" style="color:var(--on-ink);opacity:.72">Free to start. Set up in under a minute.</p>
+          <button data-goto="auth" class="btn" style="background:var(--on-ink);color:var(--ink);padding:13px 26px;font-size:15px">Get started free</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- footer -->
+    <footer style="border-top:1px solid var(--border)">
+      <div class="lp-wrap py-8 flex flex-wrap items-center justify-between gap-4">
+        <span class="text-[12.5px] faint">© 2026 Ledgerly</span>
+        <div class="flex items-center gap-6 text-[12.5px]">
+          <a href="./privacy.html" class="faint hover:text-[color:var(--ink)] transition">Privacy</a>
+          <a href="./terms.html" class="faint hover:text-[color:var(--ink)] transition">Terms</a>
+          <a href="mailto:sahilpatel257@icloud.com" class="faint hover:text-[color:var(--ink)] transition">Contact</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
   <!-- ============ AUTH ============ -->
-  <div id="auth-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-5" style="background:var(--bg)">
+  <div id="auth-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-5" style="background:var(--bg)">
     <div class="w-full max-w-[380px]">
+      <button id="auth-back" class="text-[12.5px] faint hover:text-[color:var(--ink)] transition mb-4">← Back</button>
       <div class="flex items-center gap-2.5 mb-7 justify-center">
         <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--ink);color:var(--on-ink)">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 7v10l8 5 8-5V7z"/><path d="m4 7 8 5 8-5"/><path d="M12 22V12"/></svg>

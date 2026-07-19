@@ -121,6 +121,22 @@ const AuthGate = {
     const errorEl = document.getElementById("auth-error");
     const statusEl = document.getElementById("auth-status");
 
+    const landing = document.getElementById("landing");
+    const showView = (name) => {
+      landing.classList.toggle("hidden", name !== "landing");
+      overlay.classList.toggle("hidden", name !== "auth");
+      shell.classList.toggle("hidden", name !== "app");
+      window.scrollTo(0, 0);
+    };
+    this._showView = showView;
+
+    // landing CTAs → auth screen
+    document.querySelectorAll('[data-goto="auth"]').forEach((b) =>
+      b.addEventListener("click", () => { showView("auth"); document.getElementById("auth-email").focus(); })
+    );
+    // auth → back to landing
+    document.getElementById("auth-back")?.addEventListener("click", () => showView("landing"));
+
     const showError = (msg) => {
       statusEl.textContent = "";
       errorEl.textContent = msg;
@@ -211,16 +227,14 @@ const AuthGate = {
         this.started = false;
         Store._uid = null;
         if (this._unsubSnapshot) { this._unsubSnapshot(); this._unsubSnapshot = null; }
-        overlay.classList.remove("hidden");
-        shell.classList.add("hidden");
+        showView("landing");
         return;
       }
       this._mfaResolver = null;
       mfaForm.classList.add("hidden");
       authForm.classList.remove("hidden");
       clearMsgs();
-      overlay.classList.add("hidden");
-      shell.classList.remove("hidden");
+      showView("app");
       if (this.started) return; // avoid double-init on token refresh
       this.started = true;
       await this.bootstrap(user.uid);

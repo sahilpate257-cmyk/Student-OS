@@ -19,50 +19,62 @@ import { PortfolioModule } from "./portfolio.js";
 import { IntakeModule } from "./intake.js";
 import { InsightsModule } from "./insights.js";
 
-function seedDemoData() {
-  const t = new Date();
-  const iso = (offsetDays) => {
-    const d = new Date(t.getFullYear(), t.getMonth(), t.getDate() + offsetDays);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  };
-  Store.state.deadlines = [
-    { id: Store.uid("dl"), title: "CS201 Assignment 3", source: "uni", dueDate: iso(8), done: false, notes: "" },
-    { id: Store.uid("dl"), title: "Logo delivery — Café Verde", source: "hustle", dueDate: iso(4), done: false, notes: "" },
-    { id: Store.uid("dl"), title: "Stats quiz", source: "uni", dueDate: iso(2), done: false, notes: "" },
-  ];
-  Store.state.tasks = [
-    { id: Store.uid("tk"), title: "Draft essay outline", energy: "high", done: false, linkedDeadlineId: Store.state.deadlines[0].id, createdAt: new Date().toISOString() },
-    { id: Store.uid("tk"), title: "Reply to client emails", energy: "medium", done: false, linkedDeadlineId: null, createdAt: new Date().toISOString() },
-    { id: Store.uid("tk"), title: "Organize desktop files", energy: "low", done: false, linkedDeadlineId: null, createdAt: new Date().toISOString() },
-  ];
-  Store.state.transactions = [
-    { id: Store.uid("tx"), type: "income", amount: 250, category: "Design work", description: "Café Verde deposit", date: iso(-2) },
-    { id: Store.uid("tx"), type: "expense", amount: 12.99, category: "Software", description: "Figma monthly", date: iso(-6) },
-  ];
-  Store.state.notes = [
-    { id: Store.uid("nt"), text: "Idea: sell Notion templates for exam revision", tag: "hustle", createdAt: new Date().toISOString(), promoted: false },
-  ];
-  Store.state.workouts = [
-    { id: Store.uid("wo"), date: iso(-4), label: "Push Day", exercises: [
-      { name: "Bench Press", sets: [{ reps: 10, weight: 60 }, { reps: 8, weight: 65 }, { reps: 6, weight: 70 }] },
-      { name: "Overhead Press", sets: [{ reps: 10, weight: 30 }] },
-    ]},
-    { id: Store.uid("wo"), date: iso(-1), label: "Push Day", exercises: [
-      { name: "Bench Press", sets: [{ reps: 10, weight: 62.5 }, { reps: 8, weight: 67.5 }, { reps: 5, weight: 72.5 }] },
-    ]},
-  ];
-  Store.save();
-}
-
-const NAV = [
+// Each tab is a standalone view — only one is mounted visible at a time.
+const TABS = [
   { id: "portfolio-module", icon: "trending", label: "Invest" },
   { id: "ledger-module", icon: "wallet", label: "Cash" },
   { id: "insights-module", icon: "insights", label: "Insights" },
+  { id: "intake-module", icon: "sparkle", label: "Paste" },
   { id: "energy-module", icon: "gauge", label: "Focus" },
   { id: "calendar-module", icon: "calendar", label: "Due" },
   { id: "notes-module", icon: "notebook", label: "Notes" },
   { id: "gym-module", icon: "dumbbell", label: "Gym" },
 ];
+const TAB_KEY = "ledgerly_tab";
+const TAB_ORDER_KEY = "ledgerly_tab_order";
+
+// saved order, reconciled against TABS so added/removed tabs never break it
+function orderedTabs() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(TAB_ORDER_KEY) || "[]"); } catch (e) {}
+  const known = saved.map((id) => TABS.find((t) => t.id === id)).filter(Boolean);
+  const missing = TABS.filter((t) => !known.some((k) => k.id === t.id));
+  return [...known, ...missing];
+}
+
+function saveTabOrder(list) {
+  try { localStorage.setItem(TAB_ORDER_KEY, JSON.stringify(list.map((t) => t.id))); } catch (e) {}
+}
+
+function renderTabBar() {
+  const bar = document.getElementById("tab-bar");
+  const tabs = orderedTabs();
+  bar.style.gridTemplateColumns = `repeat(${tabs.length}, minmax(0, 1fr))`;
+  bar.innerHTML = tabs.map((t) => `
+    <button data-nav="${t.id}" class="nav-btn" title="${t.label}">
+      <span class="nav-ic">${icon(t.icon, 18)}</span><span>${t.label}</span>
+    </button>`).join("");
+  bar.querySelectorAll("[data-nav]").forEach((btn) =>
+    btn.addEventListener("click", () => showTab(btn.dataset.nav))
+  );
+  // keep the active highlight in sync with whatever view is showing
+  const current = document.querySelector(".tab-view:not(.hidden)")?.id;
+  if (current) bar.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("active", b.dataset.nav === current));
+}
+
+function showTab(id) {
+  if (!TABS.some((t) => t.id === id)) id = TABS[0].id;
+  document.querySelectorAll(".tab-view").forEach((el) => {
+    const on = el.id === id;
+    el.classList.toggle("hidden", !on);
+    // re-trigger the enter animation on each switch
+    el.classList.remove("is-active");
+    if (on) { void el.offsetWidth; el.classList.add("is-active"); }
+  });
+  document.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("active", b.dataset.nav === id));
+  try { localStorage.setItem(TAB_KEY, id); } catch (e) {}
+  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+}
 
 function applyTheme(t) {
   document.documentElement.setAttribute("data-theme", t);
@@ -76,7 +88,7 @@ function bootstrapApp() {
     new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
   // header chrome icons
-  document.getElementById("security-btn").innerHTML = icon("shield", 17);
+  document.getElementById("settings-btn").innerHTML = icon("sliders", 17);
   document.getElementById("sign-out").innerHTML = icon("logout", 17);
   document.getElementById("quick-add").innerHTML = icon("plus", 16) + "<span>Capture</span>";
 
@@ -86,26 +98,22 @@ function bootstrapApp() {
     applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
   });
 
-  // mobile nav icons + labels
-  document.querySelectorAll("[data-nav]").forEach((btn) => {
-    const meta = NAV.find((n) => n.id === btn.dataset.nav);
-    if (meta) btn.innerHTML = icon(meta.icon, 19) + `<span>${meta.label}</span>`;
-  });
+  // build the bottom tab bar (respects the user's saved order)
+  renderTabBar();
+  SettingsPanel.init();
 
   [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule].forEach((m) => m.init());
 
-  // header quick-add jumps straight to brain dump input
+  // header capture button jumps to the AI Intake tab
   document.getElementById("quick-add").addEventListener("click", () => {
-    document.getElementById("notes-module").scrollIntoView({ behavior: "smooth", block: "center" });
-    setTimeout(() => document.getElementById("note-input")?.focus(), 350);
+    showTab("intake-module");
+    setTimeout(() => document.querySelector('#intake-module [data-action="toggle-open"]')?.focus(), 120);
   });
 
-  // mobile bottom nav
-  document.querySelectorAll("[data-nav]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.getElementById(btn.dataset.nav)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  });
+  // restore the last tab this device was on
+  let last = TABS[0].id;
+  try { last = localStorage.getItem(TAB_KEY) || last; } catch (e) {}
+  showTab(last);
 }
 
 const AuthGate = {
@@ -218,8 +226,7 @@ const AuthGate = {
       await signOut(auth);
     });
 
-    // ---- security panel (2FA management) ----
-    document.getElementById("security-btn").addEventListener("click", () => SecurityPanel.toggle());
+    // 2FA lives inside Settings → Security → Manage
 
     // ---- auth state: local persistence means this fires signed-in on return visits ----
     onAuthStateChanged(auth, async (user) => {
@@ -264,13 +271,11 @@ const AuthGate = {
         Store.applyRemote(snap.data());
       } else {
         Store.load();
-        if (Store.isFirstRun) seedDemoData();
-        else Store.pushToCloud();
+        if (!Store.isFirstRun) Store.pushToCloud();
       }
     } catch (e) {
       console.warn("Could not reach cloud, using local data", e);
       Store.load();
-      if (Store.isFirstRun) seedDemoData();
     }
 
     // real-time sync: pick up changes made from any other signed-in device
@@ -297,7 +302,7 @@ const SecurityPanel = {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
       const action = btn.dataset.action;
-      if (action === "close-security") this.toggle(false);
+      if (action === "close-security") { this.toggle(false); SettingsPanel.toggle(true); }
       else if (action === "copy-secret" && this.pendingSecret) {
         try { await navigator.clipboard.writeText(this.pendingSecret.secretKey); btn.textContent = "Copied!"; } catch {}
       } else if (action === "cancel-enroll") {
@@ -442,6 +447,103 @@ const SecurityPanel = {
       <p class="text-[12.5px] faint mb-4">Signed in as ${user.email} · you stay signed in on this device until you sign out.</p>
       <p id="security-msg" class="text-xs mb-3"></p>
       ${body}`;
+  },
+};
+
+// ---- Settings: appearance, tab order, security, account ----
+const SettingsPanel = {
+  el: null,
+  open: false,
+  _wired: false,
+
+  init() {
+    this.el = document.getElementById("settings-panel");
+    if (this._wired) { this.render(); return; }
+    this._wired = true;
+
+    document.getElementById("settings-btn").addEventListener("click", () => this.toggle());
+
+    this.el.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const { action, id, theme } = btn.dataset;
+      if (action === "close-settings") return this.toggle(false);
+      if (action === "set-theme") { applyTheme(theme); return this.render(); }
+      if (action === "open-security") { this.toggle(false); return SecurityPanel.toggle(true); }
+      if (action === "reset-tabs") {
+        try { localStorage.removeItem(TAB_ORDER_KEY); } catch (err) {}
+        renderTabBar();
+        return this.render();
+      }
+      if (action === "move-up" || action === "move-down") {
+        const list = orderedTabs();
+        const i = list.findIndex((t) => t.id === id);
+        const j = action === "move-up" ? i - 1 : i + 1;
+        if (i < 0 || j < 0 || j >= list.length) return;
+        [list[i], list[j]] = [list[j], list[i]];
+        saveTabOrder(list);
+        renderTabBar();
+        this.render();
+      }
+    });
+  },
+
+  toggle(force) {
+    this.open = force ?? !this.open;
+    this.el.classList.toggle("hidden", !this.open);
+    if (this.open) { SecurityPanel.toggle(false); this.render(); window.scrollTo({ top: 0 }); }
+  },
+
+  render() {
+    const list = orderedTabs();
+    const theme = document.documentElement.getAttribute("data-theme") || "light";
+    const has2fa = auth.currentUser ? multiFactor(auth.currentUser).enrolledFactors.length > 0 : false;
+
+    const rows = list.map((t, i) => `
+      <li class="flex items-center gap-2.5" style="padding:5px 0">
+        <span class="text-[11px] faint num" style="width:14px">${i + 1}</span>
+        <span class="faint">${icon(t.icon, 15)}</span>
+        <span class="flex-1 text-[13px]">${t.label}</span>
+        <button data-action="move-up" data-id="${t.id}" class="btn-icon" style="width:26px;height:26px" ${i === 0 ? "disabled" : ""} title="Move up">${icon("chevronUp", 15)}</button>
+        <button data-action="move-down" data-id="${t.id}" class="btn-icon" style="width:26px;height:26px" ${i === list.length - 1 ? "disabled" : ""} title="Move down">${icon("chevronDown", 15)}</button>
+      </li>`).join("");
+
+    const themeBtn = (v, label) => `
+      <button data-action="set-theme" data-theme="${v}" class="chip ${theme === v ? "chip-on" : ""}">${icon(v === "dark" ? "moon" : "sun", 13)} ${label}</button>`;
+
+    this.el.innerHTML = `
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-2.5">
+          <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("sliders", 18)}</span>
+          <h2 class="sect-title">Settings</h2>
+        </div>
+        <button data-action="close-settings" class="btn-icon">${icon("x", 17)}</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+        <div>
+          <p class="eyebrow mb-2.5">Appearance</p>
+          <div class="flex gap-1.5">${themeBtn("light", "Light")}${themeBtn("dark", "Dark")}</div>
+
+          <p class="eyebrow mt-6 mb-2.5">Security</p>
+          <div class="flex items-center gap-3">
+            <span class="text-[13px] flex-1">Two-factor authentication
+              <span class="text-[11.5px] ${has2fa ? "pos" : "faint"} block">${has2fa ? "On" : "Off"}</span>
+            </span>
+            <button data-action="open-security" class="btn btn-ghost btn-sm">Manage</button>
+          </div>
+
+          <p class="eyebrow mt-6 mb-2.5">Account</p>
+          <p class="text-[13px] muted">${auth.currentUser?.email ?? ""}</p>
+        </div>
+
+        <div>
+          <p class="eyebrow mb-1">Tab order</p>
+          <p class="text-[11.5px] faint mb-2">Put what you use most first. Saved on this device.</p>
+          <ul class="mb-3">${rows}</ul>
+          <button data-action="reset-tabs" class="btn btn-ghost btn-sm">Reset to default</button>
+        </div>
+      </div>`;
   },
 };
 

@@ -440,6 +440,10 @@
     @media (min-width: 640px) { .nav-btn { font-size:10.5px; } .nav-ic { width:38px; } }
     .tab-view.is-active { display:block; animation: tabIn .28s cubic-bezier(.22,1,.36,1) backwards; }
     @keyframes tabIn { from { opacity:0; transform: translateY(7px); } }
+
+    #tab-order-list li { transition: background-color .12s ease; border-radius:8px; }
+    #tab-order-list li.dragging { background: var(--sunken); box-shadow: var(--shadow-sm); position:relative; z-index:2; }
+    .drag-handle:active { cursor:grabbing; }
   </style>
 
   <script type="module" src="js/app.js"></script>

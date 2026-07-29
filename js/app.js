@@ -475,17 +475,66 @@ const SettingsPanel = {
         renderTabBar();
         return this.render();
       }
-      if (action === "move-up" || action === "move-down") {
-        const list = orderedTabs();
-        const i = list.findIndex((t) => t.id === id);
-        const j = action === "move-up" ? i - 1 : i + 1;
-        if (i < 0 || j < 0 || j >= list.length) return;
-        [list[i], list[j]] = [list[j], list[i]];
+    });
+
+    // press-and-drag reordering (pointer events cover mouse, touch and pen alike)
+    this.el.addEventListener("pointerdown", (e) => {
+      const handle = e.target.closest("[data-drag]");
+      if (!handle) return;
+      e.preventDefault();
+      this.dragId = handle.dataset.drag;
+      const row = handle.closest("li");
+      row.classList.add("dragging");
+      document.body.style.userSelect = "none";
+
+      const onMove = (ev) => this.handleDragMove(ev);
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        document.body.style.userSelect = "";
+        this.el.querySelector(`li[data-id="${this.dragId}"]`)?.classList.remove("dragging");
+        this.dragId = null;
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    });
+  },
+
+  handleDragMove(e) {
+    if (!this.dragId) return;
+    const ul = this.el.querySelector("#tab-order-list");
+    if (!ul) return;
+    const list = orderedTabs();
+    const dragIdx = list.findIndex((t) => t.id === this.dragId);
+    const rows = [...ul.children];
+    const y = e.clientY;
+    for (let i = 0; i < rows.length; i++) {
+      if (i === dragIdx) continue;
+      const r = rows[i].getBoundingClientRect();
+      const mid = r.top + r.height / 2;
+      const movingDown = i > dragIdx;
+      if ((movingDown && y > mid) || (!movingDown && y < mid)) {
+        const [item] = list.splice(dragIdx, 1);
+        list.splice(i, 0, item);
         saveTabOrder(list);
         renderTabBar();
-        this.render();
+        this.renderTabOrderList(list);
+        this.el.querySelector(`li[data-id="${this.dragId}"]`)?.classList.add("dragging");
+        break;
       }
-    });
+    }
+  },
+
+  renderTabOrderList(list) {
+    const ul = this.el.querySelector("#tab-order-list");
+    if (!ul) return;
+    ul.innerHTML = list.map((t, i) => `
+      <li class="flex items-center gap-2.5" data-id="${t.id}" style="padding:6px 0">
+        <span data-drag="${t.id}" class="drag-handle faint" style="cursor:grab;touch-action:none;display:flex">${icon("grip", 16)}</span>
+        <span class="faint">${icon(t.icon, 15)}</span>
+        <span class="flex-1 text-[13px]">${t.label}</span>
+        <span class="text-[11px] faint num">${i + 1}</span>
+      </li>`).join("");
   },
 
   toggle(force) {
@@ -498,15 +547,6 @@ const SettingsPanel = {
     const list = orderedTabs();
     const theme = document.documentElement.getAttribute("data-theme") || "light";
     const has2fa = auth.currentUser ? multiFactor(auth.currentUser).enrolledFactors.length > 0 : false;
-
-    const rows = list.map((t, i) => `
-      <li class="flex items-center gap-2.5" style="padding:5px 0">
-        <span class="text-[11px] faint num" style="width:14px">${i + 1}</span>
-        <span class="faint">${icon(t.icon, 15)}</span>
-        <span class="flex-1 text-[13px]">${t.label}</span>
-        <button data-action="move-up" data-id="${t.id}" class="btn-icon" style="width:26px;height:26px" ${i === 0 ? "disabled" : ""} title="Move up">${icon("chevronUp", 15)}</button>
-        <button data-action="move-down" data-id="${t.id}" class="btn-icon" style="width:26px;height:26px" ${i === list.length - 1 ? "disabled" : ""} title="Move down">${icon("chevronDown", 15)}</button>
-      </li>`).join("");
 
     const themeBtn = (v, label) => `
       <button data-action="set-theme" data-theme="${v}" class="chip ${theme === v ? "chip-on" : ""}">${icon(v === "dark" ? "moon" : "sun", 13)} ${label}</button>`;
@@ -539,11 +579,12 @@ const SettingsPanel = {
 
         <div>
           <p class="eyebrow mb-1">Tab order</p>
-          <p class="text-[11.5px] faint mb-2">Put what you use most first. Saved on this device.</p>
-          <ul class="mb-3">${rows}</ul>
+          <p class="text-[11.5px] faint mb-2">Press the grip and drag to reorder. Saved on this device.</p>
+          <ul id="tab-order-list" class="mb-3"></ul>
           <button data-action="reset-tabs" class="btn btn-ghost btn-sm">Reset to default</button>
         </div>
       </div>`;
+    this.renderTabOrderList(list);
   },
 };
 

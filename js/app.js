@@ -11,7 +11,6 @@ import {
 import { doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { icon } from "./icons.js";
 import { CalendarModule } from "./calendar.js";
-import { EnergyRanker } from "./energy.js";
 import { LedgerModule } from "./ledger.js";
 import { BrainDump } from "./notes.js";
 import { GymModule } from "./gym.js";
@@ -20,12 +19,12 @@ import { IntakeModule } from "./intake.js";
 import { InsightsModule } from "./insights.js";
 
 // Each tab is a standalone view — only one is mounted visible at a time.
+// Smart Paste isn't a tab — it's a modal reachable from the header and the
+// persistent strip above these tabs, since one paste can fill several of them at once.
 const TABS = [
   { id: "portfolio-module", icon: "trending", label: "Invest" },
   { id: "ledger-module", icon: "wallet", label: "Cash" },
   { id: "insights-module", icon: "insights", label: "Insights" },
-  { id: "intake-module", icon: "sparkle", label: "Paste" },
-  { id: "energy-module", icon: "gauge", label: "Focus" },
   { id: "calendar-module", icon: "calendar", label: "Due" },
   { id: "notes-module", icon: "notebook", label: "Notes" },
   { id: "gym-module", icon: "dumbbell", label: "Gym" },
@@ -88,9 +87,9 @@ function bootstrapApp() {
     new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
   // header chrome icons
-  document.getElementById("settings-btn").innerHTML = icon("sliders", 17);
+  document.getElementById("settings-btn").innerHTML = icon("cog", 18);
   document.getElementById("sign-out").innerHTML = icon("logout", 17);
-  document.getElementById("quick-add").innerHTML = icon("plus", 16) + "<span>Capture</span>";
+  document.getElementById("quick-add").innerHTML = icon("sparkle", 15) + "<span>Smart Paste</span>";
 
   // theme toggle (device-level preference, applied pre-paint by the head script)
   applyTheme(document.documentElement.getAttribute("data-theme") || "light");
@@ -98,17 +97,23 @@ function bootstrapApp() {
     applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
   });
 
+  // persistent strip above the tabs — same trigger as the header button
+  const strip = document.getElementById("smart-paste-strip");
+  strip.innerHTML = `
+    <span class="grid place-items-center w-8 h-8 rounded-[9px] shrink-0" style="background:var(--sunken);color:var(--ink)">${icon("sparkle", 16)}</span>
+    <span class="flex-1 min-w-0">
+      <span class="block text-[13.5px] font-semibold">Smart Paste</span>
+      <span class="block text-[11.5px] faint truncate">Paste a statement, syllabus or notes — it fills itself in</span>
+    </span>
+    <span class="faint shrink-0">${icon("chevronRight2", 16)}</span>`;
+  strip.addEventListener("click", () => IntakeModule.open());
+  document.getElementById("quick-add").addEventListener("click", () => IntakeModule.open());
+
   // build the bottom tab bar (respects the user's saved order)
   renderTabBar();
   SettingsPanel.init();
 
-  [CalendarModule, EnergyRanker, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule].forEach((m) => m.init());
-
-  // header capture button jumps to the AI Intake tab
-  document.getElementById("quick-add").addEventListener("click", () => {
-    showTab("intake-module");
-    setTimeout(() => document.querySelector('#intake-module [data-action="toggle-open"]')?.focus(), 120);
-  });
+  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule].forEach((m) => m.init());
 
   // restore the last tab this device was on
   let last = TABS[0].id;
@@ -554,7 +559,7 @@ const SettingsPanel = {
     this.el.innerHTML = `
       <div class="flex items-center justify-between mb-5">
         <div class="flex items-center gap-2.5">
-          <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("sliders", 18)}</span>
+          <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("cog", 18)}</span>
           <h2 class="sect-title">Settings</h2>
         </div>
         <button data-action="close-settings" class="btn-icon">${icon("x", 17)}</button>

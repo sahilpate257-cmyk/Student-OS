@@ -1,6 +1,9 @@
-// intake.js — AI Intake: paste raw text (statement/syllabus/notes), Claude extracts
-// structured deadlines/transactions/tasks via the Ledgerly Worker, user reviews
-// and picks exactly what to commit — nothing saves without explicit confirmation.
+// intake.js — Smart Paste: paste raw text (statement/syllabus/notes), Claude extracts
+// structured deadlines/transactions via the Ledgerly Worker, user reviews and picks
+// exactly what to commit — nothing saves without explicit confirmation.
+// Presented as a modal (see #intake-modal in index.html), reachable from the header
+// button and the persistent strip above the tabs — not a tab itself, since one paste
+// can fill in several different tabs at once.
 
 import { Store, auth, escapeHtml, todayISO } from "./store.js";
 import { icon } from "./icons.js";
@@ -13,24 +16,28 @@ function uid(list) {
 
 export const IntakeModule = {
   el: null,
-  open: false,
+  modal: null,
+  isOpen: false,
   loading: false,
   error: null,
-  result: null,      // { deadlines: [...], transactions: [...], tasks: [...] }
-  selected: null,     // { deadlines: Set, transactions: Set, tasks: Set }
+  result: null,      // { deadlines: [...], transactions: [...] }
+  selected: null,    // { deadlines: Set, transactions: Set }
 
   init() {
     this.el = document.getElementById("intake-module");
+    this.modal = document.getElementById("intake-modal");
+
+    // click the dimmed backdrop (not the card itself) to close
+    this.modal.addEventListener("click", (e) => {
+      if (e.target === this.modal) this.close();
+    });
 
     this.el.addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
       const { action, kind, idx } = btn.dataset;
-      if (action === "toggle-open") {
-        this.open = !this.open;
-        if (!this.open) this.reset();
-        this.render();
-        if (this.open) this.el.querySelector("#intake-text")?.focus();
+      if (action === "close-intake") {
+        this.close();
       } else if (action === "extract") {
         this.extract();
       } else if (action === "toggle-item") {
@@ -53,6 +60,19 @@ export const IntakeModule = {
     });
 
     this.render();
+  },
+
+  open() {
+    this.isOpen = true;
+    this.modal.classList.remove("hidden");
+    this.render();
+    setTimeout(() => this.el.querySelector("#intake-text")?.focus(), 60);
+  },
+
+  close() {
+    this.isOpen = false;
+    this.modal.classList.add("hidden");
+    this.reset();
   },
 
   reset() {
@@ -87,15 +107,13 @@ export const IntakeModule = {
       this.result = {
         deadlines: data.deadlines || [],
         transactions: data.transactions || [],
-        tasks: data.tasks || [],
       };
       this.selected = {
         deadlines: new Set(uid(this.result.deadlines)),
         transactions: new Set(uid(this.result.transactions)),
-        tasks: new Set(uid(this.result.tasks)),
       };
 
-      if (!this.result.deadlines.length && !this.result.transactions.length && !this.result.tasks.length) {
+      if (!this.result.deadlines.length && !this.result.transactions.length) {
         this.error = "Nothing recognisable was found in that text — try pasting more context.";
         this.result = null;
       }
@@ -133,23 +151,8 @@ export const IntakeModule = {
       });
       count++;
     });
-    this.result.tasks.forEach((t, i) => {
-      if (!this.selected.tasks.has(i)) return;
-      Store.add("tasks", {
-        id: Store.uid("tk"),
-        title: t.title,
-        energy: ["high", "medium", "low"].includes(t.energy) ? t.energy : "medium",
-        done: false,
-        linkedDeadlineId: null,
-        createdAt: new Date().toISOString(),
-      });
-      count++;
-    });
 
-    this.reset();
-    this.open = false;
-    this.render();
-    this.el.scrollIntoView({ behavior: "smooth", block: "start" });
+    this.close();
     this.flashMessage(`Added ${count} item${count === 1 ? "" : "s"}.`);
   },
 
@@ -181,39 +184,32 @@ export const IntakeModule = {
   },
 
   render() {
+    if (!this.isOpen) { this.el.innerHTML = ""; return; }
+
     const header = `
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center justify-between gap-3 mb-1">
         <div class="flex items-center gap-2.5">
           <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("sparkle", 18)}</span>
           <div>
-            <h2 class="sect-title leading-tight">AI Intake</h2>
+            <h2 class="sect-title leading-tight">Smart Paste</h2>
             <p class="text-[11.5px] faint">Paste a statement, syllabus, or notes — it fills itself in</p>
           </div>
         </div>
-        <button data-action="toggle-open" class="btn ${this.open ? "btn-ghost" : "btn-primary"} btn-sm">
-          ${this.open ? icon("x", 15) + "Close" : icon("plus", 15) + "Paste text"}
-        </button>
+        <button data-action="close-intake" class="btn-icon">${icon("x", 17)}</button>
       </div>`;
-
-    if (!this.open) {
-      this.el.innerHTML = header;
-      return;
-    }
 
     let body;
     if (this.result) {
       const fmtD = (d) => `<b>${escapeHtml(d.title)}</b> <span class="faint">· ${d.source === "hustle" ? "Hustle" : "Uni"} · ${d.dueDate}</span>`;
       const fmtT = (t) => `<b class="${t.type === "income" ? "pos" : "neg"}">${t.type === "income" ? "+" : "−"}${Math.abs(t.amount)}</b> <span class="faint">${escapeHtml(t.description || t.category || "")} · ${t.date}</span>`;
-      const fmtK = (t) => `<b>${escapeHtml(t.title)}</b> <span class="faint">· ${t.energy}</span>`;
 
-      const totalSelected = this.selected.deadlines.size + this.selected.transactions.size + this.selected.tasks.size;
+      const totalSelected = this.selected.deadlines.size + this.selected.transactions.size;
 
       body = `
         <div class="well p-4 mt-4">
           <p class="text-[12.5px] muted mb-3">Review what was found, untick anything you don't want, then add the rest.</p>
           ${this.renderReviewGroup("deadlines", "Deadlines", this.result.deadlines, fmtD)}
           ${this.renderReviewGroup("transactions", "Transactions", this.result.transactions, fmtT)}
-          ${this.renderReviewGroup("tasks", "Tasks", this.result.tasks, fmtK)}
           <div class="flex items-center gap-2 pt-1">
             <button data-action="commit" class="btn btn-primary" ${totalSelected === 0 ? "disabled" : ""}>Add ${totalSelected} item${totalSelected === 1 ? "" : "s"}</button>
             <button data-action="discard" class="btn btn-ghost">Discard</button>

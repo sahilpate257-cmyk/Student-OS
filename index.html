@@ -412,19 +412,26 @@
       <section id="settings-panel" class="hidden card card-pad mb-4"></section>
       <section id="security-panel" class="hidden card card-pad mb-4"></section>
 
+      <!-- persistent entry point to Smart Paste, sits above whichever tab is active -->
+      <button id="smart-paste-strip" class="w-full flex items-center gap-3 mb-4 px-4 py-3 rounded-2xl text-left transition"
+              style="background:var(--surface);border:1px solid var(--border)"></button>
+
       <section id="portfolio-module" class="tab-view hidden card card-pad"></section>
       <section id="ledger-module" class="tab-view hidden card card-pad"></section>
       <section id="insights-module" class="tab-view hidden card card-pad"></section>
-      <section id="intake-module" class="tab-view hidden card card-pad"></section>
-      <section id="energy-module" class="tab-view hidden card card-pad"></section>
       <section id="calendar-module" class="tab-view hidden card card-pad"></section>
       <section id="notes-module" class="tab-view hidden card card-pad"></section>
       <section id="gym-module" class="tab-view hidden card card-pad"></section>
     </main>
 
+    <!-- Smart Paste modal: overlays whichever tab is currently open -->
+    <div id="intake-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4" style="background:rgba(27,26,22,.4)">
+      <div id="intake-module" class="card card-pad w-full max-w-lg max-h-[85vh] overflow-y-auto" style="box-shadow:var(--shadow-lg)"></div>
+    </div>
+
     <!-- bottom tab bar -->
     <nav class="fixed bottom-0 inset-x-0 z-30" style="background:var(--nav-bg);backdrop-filter:blur(14px);border-top:1px solid var(--border)">
-      <div id="tab-bar" class="grid grid-cols-8 max-w-2xl mx-auto px-1"></div>
+      <div id="tab-bar" class="grid grid-cols-6 max-w-2xl mx-auto px-1"></div>
     </nav>
   </div>
 
@@ -441,6 +448,7 @@
     .tab-view.is-active { display:block; animation: tabIn .28s cubic-bezier(.22,1,.36,1) backwards; }
     @keyframes tabIn { from { opacity:0; transform: translateY(7px); } }
 
+    #smart-paste-strip:hover { background: var(--surface-2); border-color:#C9C3B4; }
     #tab-order-list li { transition: background-color .12s ease; border-radius:8px; }
     #tab-order-list li.dragging { background: var(--sunken); box-shadow: var(--shadow-sm); position:relative; z-index:2; }
     .drag-handle:active { cursor:grabbing; }

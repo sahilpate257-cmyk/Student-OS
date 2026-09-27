@@ -102,7 +102,6 @@ const PIE_CSS = `
 .alloc-row:hover .alloc-tick, .alloc-row:hover .alloc-pct { color: var(--ink); }
 `;
 
-export const PortfolioModule
 export const PortfolioModule = {
   el: null,
   refreshing: false,

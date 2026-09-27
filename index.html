@@ -454,6 +454,64 @@
     .drag-handle:active { cursor:grabbing; }
   </style>
 
-  <script type="module" src="js/app.js"></script>
+  <!-- Cache busting. GitHub Pages serves JS with max-age=600 and ES modules are
+       cached per URL, so without this a deploy leaves visitors on stale code with
+       no way to know. The import map stamps every module with the build id, so a
+       new index.html atomically pulls a matching set of modules. deploy.sh
+       rewrites every ?v= and BUILD below on each release. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "./js/app.js": "./js/app.js?v=20260927-152750",
+      "./js/store.js": "./js/store.js?v=20260927-152750",
+      "./js/icons.js": "./js/icons.js?v=20260927-152750",
+      "./js/calendar.js": "./js/calendar.js?v=20260927-152750",
+      "./js/ledger.js": "./js/ledger.js?v=20260927-152750",
+      "./js/notes.js": "./js/notes.js?v=20260927-152750",
+      "./js/gym.js": "./js/gym.js?v=20260927-152750",
+      "./js/portfolio.js": "./js/portfolio.js?v=20260927-152750",
+      "./js/intake.js": "./js/intake.js?v=20260927-152750",
+      "./js/insights.js": "./js/insights.js?v=20260927-152750"
+    }
+  }
+  </script>
+
+  <script>
+  (function () {
+    var BUILD = "20260927-152750";
+    function banner() {
+      if (document.getElementById("ledgerly-update")) return;
+      var d = document.createElement("div");
+      d.id = "ledgerly-update";
+      d.style.cssText = "position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:200;display:flex;align-items:center;gap:10px;background:var(--ink,#1B1A16);color:var(--on-ink,#fff);padding:9px 12px 9px 16px;border-radius:999px;font:500 13px/1 Manrope,system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.22)";
+      d.innerHTML = '<span>A new version is available</span>';
+      var b = document.createElement("button");
+      b.textContent = "Reload";
+      b.style.cssText = "background:#fff;color:#1B1A16;border:0;border-radius:999px;padding:6px 13px;font:600 12.5px Manrope,system-ui,sans-serif;cursor:pointer";
+      b.onclick = function () { location.replace(location.pathname); };
+      d.appendChild(b);
+      document.body.appendChild(d);
+    }
+    function check(onLoad) {
+      fetch("version.json", { cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j || !j.build || j.build === BUILD) return;
+          // On a fresh load nothing can be lost, so update silently. For a tab
+          // that has been open a while, ask rather than discard what they typed.
+          if (onLoad) location.replace(location.pathname + "?v=" + encodeURIComponent(j.build));
+          else banner();
+        })
+        .catch(function () {});
+    }
+    check(true);
+    setInterval(function () { check(false); }, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) check(false);
+    });
+  })();
+  </script>
+
+  <script type="module" src="js/app.js?v=20260927-152750"></script>
 </body>
 </html>

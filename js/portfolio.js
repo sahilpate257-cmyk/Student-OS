@@ -278,7 +278,8 @@ export const PortfolioModule = {
 
   ensureRates(holdings) {
     const target = this.displayCurrency();
-    const missing = [...new Set(holdings.map((h) => h.currency || "USD"))]
+    const cashCcy = Store.state.settings.t212Cash?.currency;
+    const missing = [...new Set([...holdings.map((h) => h.currency || "USD"), ...(cashCcy ? [cashCcy] : [])])]
       .filter((c) => c !== target && getRateSync(c, target) == null);
     if (!missing.length) return;
     Promise.allSettled(missing.map((c) => fetchRate(c, target))).then(() => this.render());
@@ -287,7 +288,8 @@ export const PortfolioModule = {
   // Trading 212 is authoritative for what is held and at what cost, so reconcile
   // those first; Yahoo then only has to price the manually-added holdings.
   async syncT212() {
-    const { holdings: live, syncedAt } = await fetchT212Holdings();
+    const { holdings: live, cash, syncedAt } = await fetchT212Holdings();
+    Store.setSetting("t212Cash", cash || null);
     const incoming = new Map(live.map((h) => [h.t212Ticker, h]));
 
     Store.state.holdings
@@ -520,6 +522,14 @@ export const PortfolioModule = {
           <p class="text-[11px] num mt-0.5 ${up ? "pos" : "neg"}">${ratesMissing ? "" : `${up ? "+" : "−"}${Math.abs(totalGainPct).toFixed(1)}%`}</p>
         </div>
       </div>
+
+      ${(() => {
+        const c = Store.state.settings.t212Cash;
+        if (!c || !(c.free > 0)) return "";
+        const cashConv = this.conv(c.free, c.currency);
+        if (cashConv == null || ratesMissing || totalValue == null) return "";
+        return `<p class="text-[11.5px] faint mb-4 -mt-2">Plus <span class="num" style="color:var(--ink)">${this.fmt(cashConv)}</span> uninvested cash · account total <span class="num" style="color:var(--ink)">${this.fmt(totalValue + cashConv)}</span></p>`;
+      })()}
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <ul class="max-h-80 overflow-y-auto pr-1" style="border-top:1px solid var(--border)">

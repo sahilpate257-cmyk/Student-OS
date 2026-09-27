@@ -114,6 +114,7 @@ export const PortfolioModule = {
   resolved: null,
   t212Error: null,
   t212SyncedAt: null,
+  pending: null, // "reset" | "clear" - inline confirmation state
 
   init() {
     this.el = document.getElementById("portfolio-module");
@@ -132,29 +133,35 @@ export const PortfolioModule = {
       if (action === "delete-holding") {
         Store.remove("holdings", id);
       } else if (action === "reset-reimport") {
-        const all = [...Store.state.holdings];
-        const manual = all.filter((h) => h.source !== "t212");
-        const warn = manual.length
-          ? `\n\n${manual.length} manually-added holding${manual.length === 1 ? "" : "s"} (${manual.map((h) => h.ticker).join(", ")}) will NOT come back.`
-          : "";
-        if (!confirm(`Delete all ${all.length} holding${all.length === 1 ? "" : "s"} and re-import from Trading 212?${warn}\n\nThis can't be undone.`)) return;
-        all.forEach((h) => Store.remove("holdings", h.id));
-        this.refreshing = true;
-        this.t212Error = null;
-        this.render();
-        try {
-          await this.syncT212();
-        } catch (err) {
-          this.t212Error = err.message || "Re-import failed";
-        }
-        this.refreshing = false;
+        // Native confirm() is suppressed in embedded webviews and in-app browsers,
+        // so destructive steps confirm inline instead.
+        this.pending = "reset";
         this.render();
       } else if (action === "clear-manual") {
-        const manual = Store.state.holdings.filter((h) => h.source !== "t212");
-        if (!manual.length) return;
-        const names = manual.map((h) => h.ticker).join(", ");
-        if (!confirm(`Remove ${manual.length} manually-added holding${manual.length === 1 ? "" : "s"}?\n\n${names}\n\nThis can't be undone. Anything not held in Trading 212 will be lost.`)) return;
-        manual.forEach((h) => Store.remove("holdings", h.id));
+        this.pending = "clear";
+        this.render();
+      } else if (action === "cancel-pending") {
+        this.pending = null;
+        this.render();
+      } else if (action === "confirm-pending") {
+        const kind = this.pending;
+        this.pending = null;
+        if (kind === "clear") {
+          Store.state.holdings.filter((h) => h.source !== "t212").forEach((h) => Store.remove("holdings", h.id));
+          this.render();
+        } else if (kind === "reset") {
+          [...Store.state.holdings].forEach((h) => Store.remove("holdings", h.id));
+          this.refreshing = true;
+          this.t212Error = null;
+          this.render();
+          try {
+            await this.syncT212();
+          } catch (err) {
+            this.t212Error = err.message || "Re-import failed";
+          }
+          this.refreshing = false;
+          this.render();
+        }
       } else if (action === "refresh-prices") {
         this.refreshAll();
       } else if (action === "toggle-buy-form") {
@@ -527,6 +534,23 @@ export const PortfolioModule = {
       }</p>
 
       ${buyForm}
+
+      ${(() => {
+        if (!this.pending) return "";
+        const all = Store.state.holdings;
+        const manual = all.filter((h) => h.source !== "t212");
+        const isReset = this.pending === "reset";
+        return `
+          <div class="well p-4 mb-4" style="border:1px solid var(--neg)">
+            <p class="text-[13px] font-semibold mb-1">${isReset ? "Reset and re-import from Trading 212?" : `Remove ${manual.length} manual holding${manual.length === 1 ? "" : "s"}?`}</p>
+            <p class="text-[12.5px] muted mb-2">${isReset ? `Deletes all ${all.length} holdings, then pulls your account fresh from Trading 212.` : "Your Trading 212 positions are not affected."}</p>
+            ${manual.length ? `<p class="text-[12.5px] mb-3">Added by hand - these will <b>not</b> come back:<br><span class="num" style="color:var(--ink)">${manual.map((h) => escapeHtml(h.ticker)).join(", ")}</span></p>` : ""}
+            <div class="flex items-center gap-2">
+              <button data-action="confirm-pending" class="btn btn-primary btn-sm">${isReset ? "Delete &amp; re-import" : `Remove ${manual.length}`}</button>
+              <button data-action="cancel-pending" class="btn btn-ghost btn-sm">Cancel</button>
+            </div>
+          </div>`;
+      })()}
 
       <div class="grid grid-cols-3 gap-2.5 mb-5">
         <div class="well px-3.5 py-3">

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ledgerly — Your money, in command</title>
   <meta name="description" content="The command centre for people with more than one income stream." />
-  <script>(function(){try{var t=localStorage.getItem('ledgerly_theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+  <script>(function(){try{var t=localStorage.getItem('ledgerly_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +31,11 @@
       --neg: #B0452C;         /* losses — clay */
       --neg-soft: #F6E9E2;
       --gold: #B58A2E;        /* highlight accent, used sparingly */
+      --accent: #4F46E5;      /* indigo */
+      --accent-2: #7C3AED;    /* violet */
+      --accent-soft: #EDEBFF;
+      --accent-ink: #FFFFFF;  /* text on an accent fill */
+      --glow: none;
       --ring: #1B1A16;
       --on-ink: #FBFAF6;      /* text/glyph on ink-filled surfaces */
       --header-bg: rgba(244,242,236,.82);
@@ -42,28 +47,33 @@
       --r-card: 16px; --r-btn: 10px; --r-chip: 999px; --r-input: 10px;
     }
     :root[data-theme="dark"] {
-      --bg: #171512;          /* warm charcoal, not blue-black */
-      --surface: #201D18;
-      --surface-2: #26231D;
-      --sunken: #1C1A15;
-      --border: #322E27;
-      --border-2: #423D34;
-      --ink: #F1ECE1;         /* warm off-white */
-      --ink-muted: #A79F90;
-      --ink-faint: #6F685B;
-      --pos: #5FB98A;
-      --pos-soft: #1C2E24;
-      --neg: #E0906F;
-      --neg-soft: #33231B;
-      --gold: #D4A24A;
-      --ring: #F1ECE1;
-      --on-ink: #171512;      /* dark glyph on the now-light ink */
-      --header-bg: rgba(23,21,18,.82);
-      --nav-bg: rgba(23,21,18,.94);
-      --scroll: #423D34;
-      --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
-      --shadow-md: 0 4px 14px rgba(0,0,0,.35);
-      --shadow-lg: 0 16px 40px rgba(0,0,0,.5);
+      --bg: #0B0D12;          /* near-black, cool */
+      --surface: #151823;     /* raised cards */
+      --surface-2: #1C2030;
+      --sunken: #10131C;
+      --border: #242939;
+      --border-2: #333A52;
+      --ink: #EEF0F8;
+      --ink-muted: #99A0BC;
+      --ink-faint: #646B87;
+      --pos: #34D399;         /* mint */
+      --pos-soft: #0D2A23;
+      --neg: #FB7185;         /* rose */
+      --neg-soft: #2C131D;
+      --gold: #A78BFA;
+      --accent: #6366F1;      /* indigo */
+      --accent-2: #8B5CF6;    /* violet */
+      --accent-soft: #1A1C38;
+      --accent-ink: #FFFFFF;
+      --ring: #8B5CF6;
+      --on-ink: #0B0D12;      /* dark glyph on the now-light ink */
+      --header-bg: rgba(11,13,18,.82);
+      --nav-bg: rgba(11,13,18,.94);
+      --scroll: #333A52;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.5);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.55);
+      --shadow-lg: 0 18px 44px rgba(0,0,0,.7);
+      --glow: 0 0 22px rgba(139,92,246,.38);
     }
     :root[data-theme="dark"] select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A79F90' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
     :root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .5; }
@@ -101,6 +111,19 @@
     .btn:disabled { opacity:.5; cursor:default; }
     .btn-primary { background: var(--ink); color: var(--on-ink); }
     .btn-primary:hover:not(:disabled) { background:#33302A; }
+    :root[data-theme="dark"] .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: var(--accent-ink); box-shadow: 0 2px 14px rgba(99,102,241,.4);
+    }
+    :root[data-theme="dark"] .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #7377F5, #9B6DF8); box-shadow: 0 3px 20px rgba(139,92,246,.55);
+    }
+    :root[data-theme="dark"] .nav-btn.active .nav-ic {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: var(--accent-ink); box-shadow: 0 2px 14px rgba(99,102,241,.45);
+    }
+    :root[data-theme="dark"] .cbx-on { background: var(--accent-2); border-color: var(--accent-2); }
+    :root[data-theme="dark"] .card { box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.03); }
     .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--border-2); }
     .btn-ghost:hover:not(:disabled) { background: var(--surface-2); border-color:#C9C3B4; }
     .btn-danger { background: var(--surface); color: var(--neg); border-color: #E7D2C8; }
@@ -214,9 +237,9 @@
           <div class="flex items-center gap-4">
             <svg width="70" height="70" viewBox="0 0 72 72" style="flex:none">
               <g transform="rotate(-90 36 36)" fill="none" stroke-width="12">
-                <circle cx="36" cy="36" r="26" stroke="#2E6F5B" stroke-dasharray="81.7 163.4" stroke-dashoffset="0"/>
-                <circle cx="36" cy="36" r="26" stroke="#C4913E" stroke-dasharray="49 163.4" stroke-dashoffset="-81.7"/>
-                <circle cx="36" cy="36" r="26" stroke="#46688C" stroke-dasharray="32.7 163.4" stroke-dashoffset="-130.7"/>
+                <circle cx="36" cy="36" r="26" stroke="#6366F1" stroke-dasharray="81.7 163.4" stroke-dashoffset="0"/>
+                <circle cx="36" cy="36" r="26" stroke="#A855F7" stroke-dasharray="49 163.4" stroke-dashoffset="-81.7"/>
+                <circle cx="36" cy="36" r="26" stroke="#38BDF8" stroke-dasharray="32.7 163.4" stroke-dashoffset="-130.7"/>
               </g>
             </svg>
             <div class="flex-1">
@@ -314,9 +337,6 @@
           <p class="lp-lead">Stop juggling six apps. Your money, your studies and your training — together, synced across every device, in a design that stays out of your way.</p>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg><p class="text-[13px] font-semibold mt-2">Investing</p></div>
-          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg><p class="text-[13px] font-semibold mt-2">Cashflow</p></div>
-          <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg><p class="text-[13px] font-semibold mt-2">Focus</p></div>
           <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg><p class="text-[13px] font-semibold mt-2">Deadlines</p></div>
           <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.4 2.6a1 1 0 0 1 3 3l-9 9-3.9 1 1-3.9z"/></svg><p class="text-[13px] font-semibold mt-2">Notes</p></div>
           <div class="lp-tile"><svg class="lp-ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></svg><p class="text-[13px] font-semibold mt-2">Training</p></div>
@@ -462,23 +482,23 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20260927-152750",
-      "./js/store.js": "./js/store.js?v=20260927-152750",
-      "./js/icons.js": "./js/icons.js?v=20260927-152750",
-      "./js/calendar.js": "./js/calendar.js?v=20260927-152750",
-      "./js/ledger.js": "./js/ledger.js?v=20260927-152750",
-      "./js/notes.js": "./js/notes.js?v=20260927-152750",
-      "./js/gym.js": "./js/gym.js?v=20260927-152750",
-      "./js/portfolio.js": "./js/portfolio.js?v=20260927-152750",
-      "./js/intake.js": "./js/intake.js?v=20260927-152750",
-      "./js/insights.js": "./js/insights.js?v=20260927-152750"
+      "./js/app.js": "./js/app.js?v=20260927-153720",
+      "./js/store.js": "./js/store.js?v=20260927-153720",
+      "./js/icons.js": "./js/icons.js?v=20260927-153720",
+      "./js/calendar.js": "./js/calendar.js?v=20260927-153720",
+      "./js/ledger.js": "./js/ledger.js?v=20260927-153720",
+      "./js/notes.js": "./js/notes.js?v=20260927-153720",
+      "./js/gym.js": "./js/gym.js?v=20260927-153720",
+      "./js/portfolio.js": "./js/portfolio.js?v=20260927-153720",
+      "./js/intake.js": "./js/intake.js?v=20260927-153720",
+      "./js/insights.js": "./js/insights.js?v=20260927-153720"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20260927-152750";
+    var BUILD = "20260927-153720";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -512,6 +532,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20260927-152750"></script>
+  <script type="module" src="js/app.js?v=20260927-153720"></script>
 </body>
 </html>

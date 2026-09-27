@@ -80,6 +80,9 @@ function applyTheme(t) {
   try { localStorage.setItem("ledgerly_theme", t); } catch (e) {}
   const b = document.getElementById("theme-btn");
   if (b) b.innerHTML = icon(t === "dark" ? "sun" : "moon", 17);
+  // The allocation donut bakes hex values into the SVG, and each theme uses a
+  // different palette, so it has to be redrawn rather than just recoloured.
+  if (PortfolioModule.el) PortfolioModule.render();
 }
 
 function bootstrapApp() {

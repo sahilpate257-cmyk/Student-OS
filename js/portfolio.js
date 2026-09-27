@@ -8,8 +8,12 @@ import { icon } from "./icons.js";
 
 const FINNHUB_KEY = "d98ii7hr01qkl0vtf940d98ii7hr01qkl0vtf94g";
 const WORKER_URL = "https://ledgerly-ai-intake.sahilpatel-ledgerly.workers.dev";
-// sophisticated muted jewel palette (reads well on warm light paper)
-const PALETTE = ["#2E6F5B", "#C4913E", "#9C5566", "#46688C", "#7C8A4A", "#B15C3C", "#5A6270", "#7A64A0", "#388A86", "#A9783A"];
+// Two palettes: saturated neon reads well against the near-black dark theme but
+// would be garish on light paper, so the muted jewel set stays for light mode.
+const PALETTE_DARK = ["#6366F1", "#A855F7", "#D946EF", "#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#22D3EE", "#818CF8", "#4ADE80"];
+const PALETTE_LIGHT = ["#2E6F5B", "#C4913E", "#9C5566", "#46688C", "#7C8A4A", "#B15C3C", "#5A6270", "#7A64A0", "#388A86", "#A9783A"];
+const isDark = () => document.documentElement.getAttribute("data-theme") === "dark";
+const PALETTE = new Proxy({}, { get: (_, k) => (isDark() ? PALETTE_DARK : PALETTE_LIGHT)[k] });
 
 const proxied = (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
 
@@ -104,6 +108,9 @@ const PIE_CSS = `
 .pie-seg { stroke: var(--surface); stroke-width:2.5; cursor:pointer; transform-origin:110px 110px; transition: transform .22s cubic-bezier(.22,1,.36,1), filter .22s ease; animation: segIn .6s ease backwards; }
 @keyframes segIn { from { opacity:0; } }
 .pie-seg:hover { filter: brightness(1.07) saturate(1.06); transform: translate(var(--tx), var(--ty)); }
+:root[data-theme="dark"] .pie-seg { stroke-width:2; }
+:root[data-theme="dark"] .pie-seg:hover { filter: brightness(1.2) saturate(1.25) drop-shadow(0 0 9px currentColor); }
+:root[data-theme="dark"] .pie-anim { filter: drop-shadow(0 0 24px rgba(99,102,241,.25)); }
 `;
 
 export const PortfolioModule = {

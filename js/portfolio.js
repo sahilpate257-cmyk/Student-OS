@@ -8,12 +8,6 @@ import { icon } from "./icons.js";
 
 const FINNHUB_KEY = "d98ii7hr01qkl0vtf940d98ii7hr01qkl0vtf94g";
 const WORKER_URL = "https://ledgerly-ai-intake.sahilpatel-ledgerly.workers.dev";
-// Two palettes: saturated neon reads well against the near-black dark theme but
-// would be garish on light paper, so the muted jewel set stays for light mode.
-const PALETTE_DARK = ["#6366F1", "#A855F7", "#D946EF", "#38BDF8", "#34D399", "#FBBF24", "#FB7185", "#22D3EE", "#818CF8", "#4ADE80"];
-const PALETTE_LIGHT = ["#2E6F5B", "#C4913E", "#9C5566", "#46688C", "#7C8A4A", "#B15C3C", "#5A6270", "#7A64A0", "#388A86", "#A9783A"];
-const isDark = () => document.documentElement.getAttribute("data-theme") === "dark";
-const PALETTE = new Proxy({}, { get: (_, k) => (isDark() ? PALETTE_DARK : PALETTE_LIGHT)[k] });
 
 const proxied = (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
 
@@ -94,25 +88,21 @@ function fetchRate(from, to) {
   return fxPending[k];
 }
 
-function mixHex(hex, target, t) {
-  const h = (s, i) => parseInt(s.slice(i, i + 2), 16);
-  const m = (a, b) => Math.round(a + (b - a) * t).toString(16).padStart(2, "0");
-  return `#${m(h(hex, 1), h(target, 1))}${m(h(hex, 3), h(target, 3))}${m(h(hex, 5), h(target, 5))}`;
-}
-
 const PIE_CSS = `
 #portfolio-module { position: relative; }
 #pie-tooltip { position:absolute; pointer-events:none; background:var(--surface); border:1px solid var(--border-2); border-radius:10px; padding:8px 11px; font-size:12px; line-height:1.5; color:var(--ink); box-shadow:var(--shadow-md); opacity:0; transition:opacity .14s; z-index:30; white-space:nowrap; max-width:240px; }
-.pie-anim { animation: pieIn .85s cubic-bezier(.22,1,.36,1) backwards; }
-@keyframes pieIn { from { opacity:0; transform: scale(.9); } }
-.pie-seg { stroke: var(--surface); stroke-width:2.5; cursor:pointer; transform-origin:110px 110px; transition: transform .22s cubic-bezier(.22,1,.36,1), filter .22s ease; animation: segIn .6s ease backwards; }
-@keyframes segIn { from { opacity:0; } }
-.pie-seg:hover { filter: brightness(1.07) saturate(1.06); transform: translate(var(--tx), var(--ty)); }
-:root[data-theme="dark"] .pie-seg { stroke-width:2; }
-:root[data-theme="dark"] .pie-seg:hover { filter: brightness(1.2) saturate(1.25) drop-shadow(0 0 9px currentColor); }
-:root[data-theme="dark"] .pie-anim { filter: drop-shadow(0 0 24px rgba(99,102,241,.25)); }
+.alloc-list { display:flex; flex-direction:column; gap:7px; }
+.alloc-row { display:grid; grid-template-columns: 58px 1fr 46px; align-items:center; gap:10px; cursor:default; animation: allocIn .5s cubic-bezier(.22,1,.36,1) backwards; }
+@keyframes allocIn { from { opacity:0; transform: translateX(-6px); } }
+.alloc-tick { font-size:11.5px; font-weight:600; color:var(--ink-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.alloc-track { height:9px; border-radius:3px; background:var(--sunken); overflow:hidden; }
+.alloc-fill { display:block; height:100%; border-radius:3px; background:var(--accent); transition: width .5s cubic-bezier(.22,1,.36,1), filter .15s ease; }
+.alloc-pct { font-size:11.5px; text-align:right; color:var(--ink-muted); font-variant-numeric: tabular-nums; }
+.alloc-row:hover .alloc-fill { filter: brightness(1.15); }
+.alloc-row:hover .alloc-tick, .alloc-row:hover .alloc-pct { color: var(--ink); }
 `;
 
+export const PortfolioModule
 export const PortfolioModule = {
   el: null,
   refreshing: false,
@@ -218,7 +208,7 @@ export const PortfolioModule = {
     this.el.addEventListener("mousemove", (e) => {
       const tip = this.el.querySelector("#pie-tooltip");
       if (!tip) return;
-      const seg = e.target.closest?.(".pie-seg");
+      const seg = e.target.closest?.(".alloc-row");
       if (!seg) { tip.style.opacity = "0"; return; }
       const rect = this.el.getBoundingClientRect();
       tip.style.left = `${e.clientX - rect.left + 14}px`;
@@ -392,48 +382,37 @@ export const PortfolioModule = {
     this.render();
   },
 
+  // Allocation is a magnitude comparison across ~12 holdings. A donut is the wrong
+  // form for that - past ~6 segments the angles blur and the hues stop being
+  // distinguishable - so this is a sorted bar set in a single validated blue,
+  // where length carries the magnitude and colour carries nothing it needn't.
   renderPie(holdings, totalValue) {
     if (!holdings.length || totalValue == null || totalValue <= 0) {
       return `<div class="text-[13px] faint py-16 text-center">${holdings.length ? "Loading exchange rates…" : "Add a holding to see your allocation."}</div>`;
     }
-    const cx = 110, cy = 110, rO = 100, rI = 64;
-    let a = -Math.PI / 2;
-    let defs = "";
-    const segs = holdings.map((h, i) => {
-      const val = this.conv(h.shares * h.currentPrice, h.currency) ?? 0;
-      const frac = val / totalValue;
-      const span = Math.min(Math.max(frac, 0) * 2 * Math.PI, 2 * Math.PI - 0.0001);
-      const a0 = a, a1 = a + span;
-      a = a1;
-      const mid = (a0 + a1) / 2;
-      const color = PALETTE[i % PALETTE.length];
-      // restrained depth: base colour deepening slightly toward the rim, soft light lift
-      defs += `<radialGradient id="pgrad${i}" gradientUnits="userSpaceOnUse" cx="110" cy="110" r="100">
-        <stop offset="60%" stop-color="${mixHex(color, "#ffffff", 0.12)}"/>
-        <stop offset="100%" stop-color="${mixHex(color, "#000000", 0.1)}"/>
-      </radialGradient>`;
-      const p = (r, ang) => `${(cx + r * Math.cos(ang)).toFixed(2)} ${(cy + r * Math.sin(ang)).toFixed(2)}`;
-      const large = a1 - a0 > Math.PI ? 1 : 0;
-      const d = `M ${p(rO, a0)} A ${rO} ${rO} 0 ${large} 1 ${p(rO, a1)} L ${p(rI, a1)} A ${rI} ${rI} 0 ${large} 0 ${p(rI, a0)} Z`;
-      return `<path class="pie-seg" d="${d}" fill="url(#pgrad${i})"
-        style="--tx:${(Math.cos(mid) * 6).toFixed(1)}px; --ty:${(Math.sin(mid) * 6).toFixed(1)}px; animation-delay:${i * 90}ms"
-        data-name="${escapeHtml(h.name || h.ticker)}" data-pct="${(frac * 100).toFixed(1)}" data-value="${this.fmt(val)}"></path>`;
+    const rows = holdings
+      .map((h) => ({ h, val: this.conv(h.shares * h.currentPrice, h.currency) ?? 0 }))
+      .sort((a, b) => b.val - a.val);
+    const max = rows[0]?.val || 1;
+
+    const bars = rows.map(({ h, val }, i) => {
+      const pct = (val / totalValue) * 100;
+      return `
+        <li class="alloc-row" style="animation-delay:${i * 32}ms"
+            data-name="${escapeHtml(h.name || h.ticker)}" data-pct="${pct.toFixed(1)}" data-value="${this.fmt(val)}">
+          <span class="alloc-tick">${escapeHtml(h.ticker)}</span>
+          <span class="alloc-track"><span class="alloc-fill" style="width:${Math.max((val / max) * 100, 1.5)}%"></span></span>
+          <span class="alloc-pct num">${pct.toFixed(1)}%</span>
+        </li>`;
     }).join("");
 
-    const legend = holdings.slice(0, 8).map((h, i) => `
-      <span class="flex items-center gap-1.5 text-[12px] muted">
-        <span class="w-2.5 h-2.5 rounded-[3px]" style="background:${PALETTE[i % PALETTE.length]}"></span>${escapeHtml(h.ticker)}
-      </span>`).join("");
-
     return `
-      <div class="flex flex-col items-center gap-4 pt-1">
-        <svg viewBox="0 0 220 220" class="w-52 h-52 pie-anim">
-          <defs>${defs}</defs>
-          <g>${segs}</g>
-          <text x="110" y="104" text-anchor="middle" fill="var(--ink-faint)" font-size="10.5" font-family="Manrope,sans-serif" letter-spacing="1">TOTAL</text>
-          <text x="110" y="126" text-anchor="middle" fill="var(--ink)" font-size="19" font-weight="500" font-family="Fraunces,Georgia,serif">${this.fmt(totalValue)}</text>
-        </svg>
-        <div class="flex flex-wrap justify-center gap-x-3.5 gap-y-1.5">${legend}</div>
+      <div class="pt-1">
+        <div class="flex items-baseline justify-between mb-3">
+          <p class="eyebrow">Allocation</p>
+          <p class="text-[11.5px] faint">${rows.length} holding${rows.length === 1 ? "" : "s"}</p>
+        </div>
+        <ul class="alloc-list">${bars}</ul>
       </div>`;
   },
 
@@ -465,7 +444,6 @@ export const PortfolioModule = {
         </form>` : "";
       return `
         <li class="flex items-center gap-3 py-2.5 group flex-wrap divide-row">
-          <span class="w-2.5 h-2.5 shrink-0 rounded-[3px]" style="background:${PALETTE[i % PALETTE.length]}"></span>
           <div class="flex-1 min-w-0">
             <p class="text-[13.5px] font-semibold truncate">${escapeHtml(h.name || h.ticker)}
               <span class="text-[11px] faint font-normal ml-0.5">${escapeHtml(h.ticker)}</span>${

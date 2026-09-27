@@ -31,9 +31,9 @@
       --neg: #B0452C;         /* losses — clay */
       --neg-soft: #F6E9E2;
       --gold: #B58A2E;        /* highlight accent, used sparingly */
-      --accent: #4F46E5;      /* indigo */
-      --accent-2: #7C3AED;    /* violet */
-      --accent-soft: #EDEBFF;
+      --accent: #2a78d6;      /* validated blue, step 450 */
+      --accent-2: #1c5cab;
+      --accent-soft: #E6EFFB;
       --accent-ink: #FFFFFF;  /* text on an accent fill */
       --glow: none;
       --ring: #1B1A16;
@@ -60,12 +60,12 @@
       --pos-soft: #0D2A23;
       --neg: #FB7185;         /* rose */
       --neg-soft: #2C131D;
-      --gold: #A78BFA;
-      --accent: #6366F1;      /* indigo */
-      --accent-2: #8B5CF6;    /* violet */
-      --accent-soft: #1A1C38;
+      --gold: #86b6ef;
+      --accent: #3987e5;      /* validated blue, step 400 */
+      --accent-2: #256abf;
+      --accent-soft: #12243c;
       --accent-ink: #FFFFFF;
-      --ring: #8B5CF6;
+      --ring: #3987e5;
       --on-ink: #0B0D12;      /* dark glyph on the now-light ink */
       --header-bg: rgba(11,13,18,.82);
       --nav-bg: rgba(11,13,18,.94);
@@ -73,7 +73,7 @@
       --shadow-sm: 0 1px 2px rgba(0,0,0,.5);
       --shadow-md: 0 4px 16px rgba(0,0,0,.55);
       --shadow-lg: 0 18px 44px rgba(0,0,0,.7);
-      --glow: 0 0 22px rgba(139,92,246,.38);
+      --glow: none;
     }
     :root[data-theme="dark"] select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A79F90' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
     :root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .5; }
@@ -111,18 +111,10 @@
     .btn:disabled { opacity:.5; cursor:default; }
     .btn-primary { background: var(--ink); color: var(--on-ink); }
     .btn-primary:hover:not(:disabled) { background:#33302A; }
-    :root[data-theme="dark"] .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color: var(--accent-ink); box-shadow: 0 2px 14px rgba(99,102,241,.4);
-    }
-    :root[data-theme="dark"] .btn-primary:hover:not(:disabled) {
-      background: linear-gradient(135deg, #7377F5, #9B6DF8); box-shadow: 0 3px 20px rgba(139,92,246,.55);
-    }
-    :root[data-theme="dark"] .nav-btn.active .nav-ic {
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color: var(--accent-ink); box-shadow: 0 2px 14px rgba(99,102,241,.45);
-    }
-    :root[data-theme="dark"] .cbx-on { background: var(--accent-2); border-color: var(--accent-2); }
+    :root[data-theme="dark"] .btn-primary { background: var(--accent); color: var(--accent-ink); }
+    :root[data-theme="dark"] .btn-primary:hover:not(:disabled) { background: #4f96ea; }
+    :root[data-theme="dark"] .nav-btn.active .nav-ic { background: var(--accent); color: var(--accent-ink); }
+    :root[data-theme="dark"] .cbx-on { background: var(--accent); border-color: var(--accent); }
     :root[data-theme="dark"] .card { box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.03); }
     .btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--border-2); }
     .btn-ghost:hover:not(:disabled) { background: var(--surface-2); border-color:#C9C3B4; }
@@ -237,9 +229,9 @@
           <div class="flex items-center gap-4">
             <svg width="70" height="70" viewBox="0 0 72 72" style="flex:none">
               <g transform="rotate(-90 36 36)" fill="none" stroke-width="12">
-                <circle cx="36" cy="36" r="26" stroke="#6366F1" stroke-dasharray="81.7 163.4" stroke-dashoffset="0"/>
-                <circle cx="36" cy="36" r="26" stroke="#A855F7" stroke-dasharray="49 163.4" stroke-dashoffset="-81.7"/>
-                <circle cx="36" cy="36" r="26" stroke="#38BDF8" stroke-dasharray="32.7 163.4" stroke-dashoffset="-130.7"/>
+                <circle cx="36" cy="36" r="26" stroke="#86b6ef" stroke-dasharray="81.7 163.4" stroke-dashoffset="0"/>
+                <circle cx="36" cy="36" r="26" stroke="#3987e5" stroke-dasharray="49 163.4" stroke-dashoffset="-81.7"/>
+                <circle cx="36" cy="36" r="26" stroke="#1c5cab" stroke-dasharray="32.7 163.4" stroke-dashoffset="-130.7"/>
               </g>
             </svg>
             <div class="flex-1">
@@ -482,23 +474,23 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20260927-153720",
-      "./js/store.js": "./js/store.js?v=20260927-153720",
-      "./js/icons.js": "./js/icons.js?v=20260927-153720",
-      "./js/calendar.js": "./js/calendar.js?v=20260927-153720",
-      "./js/ledger.js": "./js/ledger.js?v=20260927-153720",
-      "./js/notes.js": "./js/notes.js?v=20260927-153720",
-      "./js/gym.js": "./js/gym.js?v=20260927-153720",
-      "./js/portfolio.js": "./js/portfolio.js?v=20260927-153720",
-      "./js/intake.js": "./js/intake.js?v=20260927-153720",
-      "./js/insights.js": "./js/insights.js?v=20260927-153720"
+      "./js/app.js": "./js/app.js?v=20260927-154044",
+      "./js/store.js": "./js/store.js?v=20260927-154044",
+      "./js/icons.js": "./js/icons.js?v=20260927-154044",
+      "./js/calendar.js": "./js/calendar.js?v=20260927-154044",
+      "./js/ledger.js": "./js/ledger.js?v=20260927-154044",
+      "./js/notes.js": "./js/notes.js?v=20260927-154044",
+      "./js/gym.js": "./js/gym.js?v=20260927-154044",
+      "./js/portfolio.js": "./js/portfolio.js?v=20260927-154044",
+      "./js/intake.js": "./js/intake.js?v=20260927-154044",
+      "./js/insights.js": "./js/insights.js?v=20260927-154044"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20260927-153720";
+    var BUILD = "20260927-154044";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -532,6 +524,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20260927-153720"></script>
+  <script type="module" src="js/app.js?v=20260927-154044"></script>
 </body>
 </html>

@@ -125,12 +125,30 @@ export const PortfolioModule = {
       document.head.appendChild(style);
     }
 
-    this.el.addEventListener("click", (e) => {
+    this.el.addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
       const { action, id } = btn.dataset;
       if (action === "delete-holding") {
         Store.remove("holdings", id);
+      } else if (action === "reset-reimport") {
+        const all = [...Store.state.holdings];
+        const manual = all.filter((h) => h.source !== "t212");
+        const warn = manual.length
+          ? `\n\n${manual.length} manually-added holding${manual.length === 1 ? "" : "s"} (${manual.map((h) => h.ticker).join(", ")}) will NOT come back.`
+          : "";
+        if (!confirm(`Delete all ${all.length} holding${all.length === 1 ? "" : "s"} and re-import from Trading 212?${warn}\n\nThis can't be undone.`)) return;
+        all.forEach((h) => Store.remove("holdings", h.id));
+        this.refreshing = true;
+        this.t212Error = null;
+        this.render();
+        try {
+          await this.syncT212();
+        } catch (err) {
+          this.t212Error = err.message || "Re-import failed";
+        }
+        this.refreshing = false;
+        this.render();
       } else if (action === "clear-manual") {
         const manual = Store.state.holdings.filter((h) => h.source !== "t212");
         if (!manual.length) return;
@@ -484,13 +502,16 @@ export const PortfolioModule = {
           <span class="grid place-items-center w-9 h-9 rounded-[10px]" style="background:var(--sunken);color:var(--ink)">${icon("trending", 18)}</span>
           <h2 class="sect-title">Investments</h2>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap justify-end">
           <div class="flex items-center gap-0.5 p-0.5 rounded-lg" style="background:var(--sunken)">${currencyToggle}</div>
           <button data-action="toggle-buy-form" class="btn ${this.showBuyForm ? "btn-ghost" : "btn-primary"} btn-sm">
             ${this.showBuyForm ? icon("x", 15) + "Close" : icon("plus", 15) + "Log buy"}
           </button>
           ${Store.state.holdings.some((h) => h.source === "t212") && Store.state.holdings.some((h) => h.source !== "t212")
             ? `<button data-action="clear-manual" class="btn btn-ghost btn-sm">Clear ${Store.state.holdings.filter((h) => h.source !== "t212").length} manual</button>`
+            : ""}
+          ${this.t212SyncedAt || Store.state.holdings.some((h) => h.source === "t212")
+            ? `<button data-action="reset-reimport" ${this.refreshing ? "disabled" : ""} class="btn btn-ghost btn-sm">Reset &amp; re-import</button>`
             : ""}
           <button data-action="refresh-prices" ${this.refreshing ? "disabled" : ""} class="btn btn-ghost btn-sm">
             ${icon("refresh", 15)}${this.refreshing ? "Refreshing" : "Refresh"}

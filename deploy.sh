@@ -7,6 +7,28 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Syntax-gate every module before anything is published. `node --check foo.js`
+# parses as CommonJS and exits 0 on real ESM errors (a duplicate `export const`
+# with no initializer once shipped a blank app this way), so each file is copied
+# to .mjs to force module parsing.
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+FAILED=0
+for f in js/*.js; do
+  cp "$f" "$TMP/$(basename "${f%.js}").mjs"
+  if ! node --check "$TMP/$(basename "${f%.js}").mjs" 2>"$TMP/err"; then
+    echo "SYNTAX ERROR in $f:"
+    sed 's/^/    /' "$TMP/err"
+    FAILED=1
+  fi
+done
+if [ "$FAILED" -ne 0 ]; then
+  echo
+  echo "Refusing to deploy - fix the errors above."
+  exit 1
+fi
+echo "Syntax check passed ($(ls js/*.js | wc -l | tr -d ' ') modules)."
+
 BUILD="$(date -u +%Y%m%d-%H%M%S)"
 MSG="${1:-Deploy $BUILD}"
 

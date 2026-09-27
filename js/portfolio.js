@@ -131,6 +131,12 @@ export const PortfolioModule = {
       const { action, id } = btn.dataset;
       if (action === "delete-holding") {
         Store.remove("holdings", id);
+      } else if (action === "clear-manual") {
+        const manual = Store.state.holdings.filter((h) => h.source !== "t212");
+        if (!manual.length) return;
+        const names = manual.map((h) => h.ticker).join(", ");
+        if (!confirm(`Remove ${manual.length} manually-added holding${manual.length === 1 ? "" : "s"}?\n\n${names}\n\nThis can't be undone. Anything not held in Trading 212 will be lost.`)) return;
+        manual.forEach((h) => Store.remove("holdings", h.id));
       } else if (action === "refresh-prices") {
         this.refreshAll();
       } else if (action === "toggle-buy-form") {
@@ -428,7 +434,11 @@ export const PortfolioModule = {
           <span class="w-2.5 h-2.5 shrink-0 rounded-[3px]" style="background:${PALETTE[i % PALETTE.length]}"></span>
           <div class="flex-1 min-w-0">
             <p class="text-[13.5px] font-semibold truncate">${escapeHtml(h.name || h.ticker)}
-              <span class="text-[11px] faint font-normal ml-0.5">${escapeHtml(h.ticker)}</span></p>
+              <span class="text-[11px] faint font-normal ml-0.5">${escapeHtml(h.ticker)}</span>${
+                h.source === "t212"
+                  ? `<span class="text-[9.5px] font-semibold ml-1 px-1 py-px rounded align-middle" style="background:var(--sunken);color:var(--muted)">212</span>`
+                  : ""
+              }</p>
             <p class="text-[11.5px] faint num">${h.shares} sh · avg ${this.fmt(this.conv(h.buyPrice, h.currency))} → ${this.fmt(this.conv(h.currentPrice, h.currency))}</p>
           </div>
           <div class="text-right">
@@ -477,6 +487,9 @@ export const PortfolioModule = {
           <button data-action="toggle-buy-form" class="btn ${this.showBuyForm ? "btn-ghost" : "btn-primary"} btn-sm">
             ${this.showBuyForm ? icon("x", 15) + "Close" : icon("plus", 15) + "Log buy"}
           </button>
+          ${Store.state.holdings.some((h) => h.source === "t212") && Store.state.holdings.some((h) => h.source !== "t212")
+            ? `<button data-action="clear-manual" class="btn btn-ghost btn-sm">Clear ${Store.state.holdings.filter((h) => h.source !== "t212").length} manual</button>`
+            : ""}
           <button data-action="refresh-prices" ${this.refreshing ? "disabled" : ""} class="btn btn-ghost btn-sm">
             ${icon("refresh", 15)}${this.refreshing ? "Refreshing" : "Refresh"}
           </button>

@@ -3,10 +3,11 @@
 // Finnhub as US-only fallback, live multi-currency FX via frankfurter (ECB),
 // buy-merging, editable holdings, refined allocation donut.
 
-import { Store, escapeHtml } from "./store.js";
+import { Store, auth, escapeHtml } from "./store.js";
 import { icon } from "./icons.js";
 
 const FINNHUB_KEY = "d98ii7hr01qkl0vtf940d98ii7hr01qkl0vtf94g";
+const WORKER_URL = "https://ledgerly-ai-intake.sahilpatel-ledgerly.workers.dev";
 // sophisticated muted jewel palette (reads well on warm light paper)
 const PALETTE = ["#2E6F5B", "#C4913E", "#9C5566", "#46688C", "#7C8A4A", "#B15C3C", "#5A6270", "#7A64A0", "#388A86", "#A9783A"];
 
@@ -55,6 +56,20 @@ async function resolveTicker(input) {
   throw new Error("not found");
 }
 
+// ---- Trading 212 ----
+// Proxied through the Worker: T212 sends no CORS headers, and its key is a
+// brokerage credential that must never reach the browser.
+async function fetchT212Holdings() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in.");
+  const res = await fetch(`${WORKER_URL}/t212/portfolio`, {
+    headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Trading 212 sync failed");
+  return data;
+}
+
 // ---- FX: generic pair cache backed by frankfurter (ECB) ----
 const fxCache = {};
 const fxPending = {};
@@ -97,6 +112,8 @@ export const PortfolioModule = {
   showBuyForm: false,
   editingId: null,
   resolved: null,
+  t212Error: null,
+  t212SyncedAt: null,
 
   init() {
     this.el = document.getElementById("portfolio-module");
@@ -177,6 +194,9 @@ export const PortfolioModule = {
     });
 
     Store.subscribe("holdings:changed", () => this.render());
+
+    // Pull Trading 212 positions once on load; a no-op for accounts without the link.
+    this.syncT212().then(() => this.render()).catch(() => {});
     Store.subscribe("settings:changed", () => this.render());
     this.render();
   },
@@ -258,16 +278,67 @@ export const PortfolioModule = {
     Promise.allSettled(missing.map((c) => fetchRate(c, target))).then(() => this.render());
   },
 
+  // Trading 212 is authoritative for what is held and at what cost, so reconcile
+  // those first; Yahoo then only has to price the manually-added holdings.
+  async syncT212() {
+    const { holdings: live, syncedAt } = await fetchT212Holdings();
+    const incoming = new Map(live.map((h) => [h.t212Ticker, h]));
+
+    Store.state.holdings
+      .filter((h) => h.source === "t212")
+      .forEach((h) => {
+        const match = incoming.get(h.t212Ticker);
+        if (!match) return Store.remove("holdings", h.id); // position closed
+        Store.update("holdings", h.id, {
+          ticker: match.ticker,
+          name: match.name,
+          currency: match.currency,
+          shares: match.shares,
+          buyPrice: match.buyPrice,
+          currentPrice: match.currentPrice,
+          lastUpdated: syncedAt,
+        });
+        incoming.delete(h.t212Ticker);
+      });
+
+    incoming.forEach((m) => {
+      Store.add("holdings", {
+        id: Store.uid("hd"),
+        source: "t212",
+        t212Ticker: m.t212Ticker,
+        ticker: m.ticker,
+        name: m.name,
+        currency: m.currency,
+        shares: m.shares,
+        buyPrice: m.buyPrice,
+        currentPrice: m.currentPrice,
+        lastUpdated: syncedAt,
+      });
+    });
+
+    this.t212SyncedAt = syncedAt;
+    return live.length;
+  },
+
   async refreshAll() {
     if (this.refreshing) return;
     this.refreshing = true;
+    this.t212Error = null;
     this.render();
 
-    const holdings = Store.state.holdings;
-    const results = await Promise.allSettled(holdings.map((h) => resolveTicker(h.ticker)));
+    try {
+      await this.syncT212();
+    } catch (e) {
+      // A signed-in account with no T212 link is a normal state, not an error.
+      this.t212Error = /enabled for this account|Not signed in/.test(e.message) ? null : e.message;
+    }
+
+    // Manual holdings still price off Yahoo; synced ones already carry a live price.
+    const manual = Store.state.holdings.filter((h) => h.source !== "t212");
+    const results = await Promise.allSettled(manual.map((h) => resolveTicker(h.ticker)));
     results.forEach((r, i) => {
       if (r.status === "fulfilled") {
-        Store.update("holdings", holdings[i].id, {
+        Store.update("holdings", manual[i].id, {
           currentPrice: r.value.price,
           name: r.value.name,
           currency: r.value.currency,
@@ -411,7 +482,13 @@ export const PortfolioModule = {
           </button>
         </div>
       </div>
-      <p class="text-[11.5px] faint mb-4">${fxNote}</p>
+      <p class="text-[11.5px] faint mb-4">${fxNote}${
+        this.t212Error
+          ? ` · <span class="neg">Trading 212: ${escapeHtml(this.t212Error)}</span>`
+          : this.t212SyncedAt
+            ? ` · Trading 212 synced ${new Date(this.t212SyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+            : ""
+      }</p>
 
       ${buyForm}
 

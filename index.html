@@ -2,7 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- Installable app (PWA). iOS honours very little of manifest.json, so the
+       apple-* tags below are what actually make it behave like an app there. -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0B0D12" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Ledgerly" />
   <title>Ledgerly — Your money, in command</title>
   <meta name="description" content="The command centre for people with more than one income stream." />
   <script>(function(){try{var t=localStorage.getItem('ledgerly_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
@@ -16,6 +26,13 @@
     } } };
   </script>
   <style>
+    /* Installed on iOS the app draws edge to edge, so anything pinned to an edge
+       has to clear the notch and the home indicator. env() is 0 in a browser tab,
+       so these are inert until it is actually installed. */
+    body { padding-bottom: env(safe-area-inset-bottom); }
+    @supports (-webkit-touch-callout: none) {
+      main { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+    }
     :root {
       --bg: #F4F2EC;          /* warm bone page */
       --surface: #FFFFFF;
@@ -403,7 +420,7 @@
 
   <!-- ============ APP ============ -->
   <div id="app-shell" class="hidden">
-    <header class="sticky top-0 z-30" style="background:var(--header-bg);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)">
+    <header class="sticky top-0 z-30" style="background:var(--header-bg);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding-top:env(safe-area-inset-top)">
       <div class="max-w-6xl mx-auto flex items-center gap-3 px-4 lg:px-6 py-3">
         <div class="flex items-center gap-2.5">
           <span class="grid place-items-center w-8 h-8 rounded-[9px]" style="background:var(--ink);color:var(--on-ink)">
@@ -442,7 +459,7 @@
     </div>
 
     <!-- bottom tab bar -->
-    <nav class="fixed bottom-0 inset-x-0 z-30" style="background:var(--nav-bg);backdrop-filter:blur(14px);border-top:1px solid var(--border)">
+    <nav class="fixed bottom-0 inset-x-0 z-30" style="background:var(--nav-bg);backdrop-filter:blur(14px);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)">
       <div id="tab-bar" class="grid grid-cols-6 max-w-2xl mx-auto px-1"></div>
     </nav>
   </div>
@@ -474,23 +491,23 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20260927-154415",
-      "./js/store.js": "./js/store.js?v=20260927-154415",
-      "./js/icons.js": "./js/icons.js?v=20260927-154415",
-      "./js/calendar.js": "./js/calendar.js?v=20260927-154415",
-      "./js/ledger.js": "./js/ledger.js?v=20260927-154415",
-      "./js/notes.js": "./js/notes.js?v=20260927-154415",
-      "./js/gym.js": "./js/gym.js?v=20260927-154415",
-      "./js/portfolio.js": "./js/portfolio.js?v=20260927-154415",
-      "./js/intake.js": "./js/intake.js?v=20260927-154415",
-      "./js/insights.js": "./js/insights.js?v=20260927-154415"
+      "./js/app.js": "./js/app.js?v=20261003-224416",
+      "./js/store.js": "./js/store.js?v=20261003-224416",
+      "./js/icons.js": "./js/icons.js?v=20261003-224416",
+      "./js/calendar.js": "./js/calendar.js?v=20261003-224416",
+      "./js/ledger.js": "./js/ledger.js?v=20261003-224416",
+      "./js/notes.js": "./js/notes.js?v=20261003-224416",
+      "./js/gym.js": "./js/gym.js?v=20261003-224416",
+      "./js/portfolio.js": "./js/portfolio.js?v=20261003-224416",
+      "./js/intake.js": "./js/intake.js?v=20261003-224416",
+      "./js/insights.js": "./js/insights.js?v=20261003-224416"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20260927-154415";
+    var BUILD = "20261003-224416";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -516,6 +533,13 @@
         })
         .catch(function () {});
     }
+    // Register the service worker so the app opens offline once installed. It is
+    // additive: if registration fails the app still works, just online-only.
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("sw.js").catch(function () {});
+      });
+    }
     check(true);
     setInterval(function () { check(false); }, 5 * 60 * 1000);
     document.addEventListener("visibilitychange", function () {
@@ -524,6 +548,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20260927-154415"></script>
+  <script type="module" src="js/app.js?v=20261003-224416"></script>
 </body>
 </html>

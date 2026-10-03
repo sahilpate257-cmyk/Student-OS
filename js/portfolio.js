@@ -91,15 +91,22 @@ function fetchRate(from, to) {
 const PIE_CSS = `
 #portfolio-module { position: relative; }
 #pie-tooltip { position:absolute; pointer-events:none; background:var(--surface); border:1px solid var(--border-2); border-radius:10px; padding:8px 11px; font-size:12px; line-height:1.5; color:var(--ink); box-shadow:var(--shadow-md); opacity:0; transition:opacity .14s; z-index:30; white-space:nowrap; max-width:240px; }
-.alloc-list { display:flex; flex-direction:column; gap:7px; }
-.alloc-row { display:grid; grid-template-columns: 58px 1fr 46px; align-items:center; gap:10px; cursor:default; animation: allocIn .5s cubic-bezier(.22,1,.36,1) backwards; }
-@keyframes allocIn { from { opacity:0; transform: translateX(-6px); } }
-.alloc-tick { font-size:11.5px; font-weight:600; color:var(--ink-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.alloc-track { height:9px; border-radius:3px; background:var(--sunken); overflow:hidden; }
-.alloc-fill { display:block; height:100%; border-radius:3px; background:var(--accent); transition: width .5s cubic-bezier(.22,1,.36,1), filter .15s ease; }
-.alloc-pct { font-size:11.5px; text-align:right; color:var(--ink-muted); font-variant-numeric: tabular-nums; }
-.alloc-row:hover .alloc-fill { filter: brightness(1.15); }
-.alloc-row:hover .alloc-tick, .alloc-row:hover .alloc-pct { color: var(--ink); }
+
+/* Hero: the account total carries the weight, the split beneath explains it. */
+.hero { border:1px solid var(--border); border-radius:var(--r-card); overflow:hidden; background:var(--surface-2); }
+.hero-main { padding:18px 18px 16px; }
+.hero-fig { font-size:38px; font-weight:500; line-height:1; letter-spacing:-.5px; color:var(--ink); }
+.hero-split { display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--border); }
+.hero-part { padding:11px 18px 13px; }
+.hero-part + .hero-part { border-left:1px solid var(--border); }
+@media (max-width: 380px) { .hero-fig { font-size:32px; } }
+
+/* Donut: light hairline between segments, soft lift off the surface. */
+.pie-anim { animation: pieIn .85s cubic-bezier(.22,1,.36,1) backwards; filter: drop-shadow(0 6px 16px rgba(0,0,0,.28)); }
+@keyframes pieIn { from { opacity:0; transform: scale(.92); } }
+.pie-seg { stroke: var(--surface); stroke-width:2.5; cursor:pointer; transform-origin:110px 110px; transition: transform .22s cubic-bezier(.22,1,.36,1), filter .22s ease; animation: segIn .55s ease backwards; }
+@keyframes segIn { from { opacity:0; } }
+.pie-seg:hover { filter: brightness(1.12); transform: translate(var(--tx), var(--ty)); }
 `;
 
 export const PortfolioModule = {
@@ -207,7 +214,7 @@ export const PortfolioModule = {
     this.el.addEventListener("mousemove", (e) => {
       const tip = this.el.querySelector("#pie-tooltip");
       if (!tip) return;
-      const seg = e.target.closest?.(".alloc-row");
+      const seg = e.target.closest?.(".pie-seg");
       if (!seg) { tip.style.opacity = "0"; return; }
       const rect = this.el.getBoundingClientRect();
       tip.style.left = `${e.clientX - rect.left + 14}px`;
@@ -381,37 +388,73 @@ export const PortfolioModule = {
     this.render();
   },
 
-  // Allocation is a magnitude comparison across ~12 holdings. A donut is the wrong
-  // form for that - past ~6 segments the angles blur and the hues stop being
-  // distinguishable - so this is a sorted bar set in a single validated blue,
-  // where length carries the magnitude and colour carries nothing it needn't.
+  // Donut, grouped to the top 5 plus "Other". A ring stops being readable past
+  // ~6 segments, so the grouping is what makes this form legitimate for a 12-stock
+  // portfolio. Segments are one hue in validated steps (an 8-step version of this
+  // ramp failed the adjacent-lightness check), with "Other" held back in neutral
+  // grey so it reads as a remainder rather than a sixth holding.
   renderPie(holdings, totalValue) {
     if (!holdings.length || totalValue == null || totalValue <= 0) {
       return `<div class="text-[13px] faint py-16 text-center">${holdings.length ? "Loading exchange rates…" : "Add a holding to see your allocation."}</div>`;
     }
-    const rows = holdings
-      .map((h) => ({ h, val: this.conv(h.shares * h.currentPrice, h.currency) ?? 0 }))
-      .sort((a, b) => b.val - a.val);
-    const max = rows[0]?.val || 1;
 
-    const bars = rows.map(({ h, val }, i) => {
-      const pct = (val / totalValue) * 100;
-      return `
-        <li class="alloc-row" style="animation-delay:${i * 32}ms"
-            data-name="${escapeHtml(h.name || h.ticker)}" data-pct="${pct.toFixed(1)}" data-value="${this.fmt(val)}">
-          <span class="alloc-tick">${escapeHtml(h.ticker)}</span>
-          <span class="alloc-track"><span class="alloc-fill" style="width:${Math.max((val / max) * 100, 1.5)}%"></span></span>
-          <span class="alloc-pct num">${pct.toFixed(1)}%</span>
-        </li>`;
+    const RAMP = ["#cde2fb", "#86b6ef", "#3987e5", "#256abf", "#184f95"];
+    const OTHER = "#454c63";
+    const TOP = 5;
+
+    const sorted = holdings
+      .map((h) => ({ label: h.ticker, name: h.name || h.ticker, val: this.conv(h.shares * h.currentPrice, h.currency) ?? 0 }))
+      .sort((a, b) => b.val - a.val);
+
+    const slices = sorted.slice(0, TOP).map((d, i) => ({ ...d, colour: RAMP[i] }));
+    const rest = sorted.slice(TOP);
+    if (rest.length) {
+      slices.push({
+        label: "Other",
+        name: `${rest.length} smaller holding${rest.length === 1 ? "" : "s"}`,
+        val: rest.reduce((t, d) => t + d.val, 0),
+        colour: OTHER,
+      });
+    }
+
+    const cx = 110, cy = 110, rO = 100, rI = 58;
+    let a = -Math.PI / 2;
+    let defs = "";
+
+    const segs = slices.map((d, i) => {
+      const frac = d.val / totalValue;
+      const span = Math.min(Math.max(frac, 0) * 2 * Math.PI, 2 * Math.PI - 0.0001);
+      const a0 = a, a1 = a + span;
+      a = a1;
+      // Depth the way the reference does it: lift at the inner edge, deepen at the rim.
+      defs += `<radialGradient id="pg${i}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${rO}">
+          <stop offset="${((rI / rO) * 100).toFixed(0)}%" stop-color="${d.colour}" stop-opacity="1"/>
+          <stop offset="100%" stop-color="${d.colour}" stop-opacity="0.72"/>
+        </radialGradient>`;
+      const pt = (r, ang) => `${(cx + r * Math.cos(ang)).toFixed(2)} ${(cy + r * Math.sin(ang)).toFixed(2)}`;
+      const large = a1 - a0 > Math.PI ? 1 : 0;
+      const path = `M ${pt(rO, a0)} A ${rO} ${rO} 0 ${large} 1 ${pt(rO, a1)} L ${pt(rI, a1)} A ${rI} ${rI} 0 ${large} 0 ${pt(rI, a0)} Z`;
+      const mid = (a0 + a1) / 2;
+      return `<path class="pie-seg" d="${path}" fill="url(#pg${i})"
+          style="--tx:${(Math.cos(mid) * 5).toFixed(1)}px; --ty:${(Math.sin(mid) * 5).toFixed(1)}px; animation-delay:${i * 80}ms"
+          data-name="${escapeHtml(d.name)}" data-pct="${(frac * 100).toFixed(1)}" data-value="${this.fmt(d.val)}"></path>`;
     }).join("");
 
+    const legend = slices.map((d) => `
+      <span class="flex items-center gap-1.5 text-[12px] muted">
+        <span class="w-2.5 h-2.5 rounded-[3px]" style="background:${d.colour}"></span>${escapeHtml(d.label)}
+        <span class="faint num">${((d.val / totalValue) * 100).toFixed(0)}%</span>
+      </span>`).join("");
+
     return `
-      <div class="pt-1">
-        <div class="flex items-baseline justify-between mb-3">
-          <p class="eyebrow">Allocation</p>
-          <p class="text-[11.5px] faint">${rows.length} holding${rows.length === 1 ? "" : "s"}</p>
-        </div>
-        <ul class="alloc-list">${bars}</ul>
+      <div class="flex flex-col items-center gap-4 pt-1">
+        <svg viewBox="0 0 220 220" class="w-56 h-56 pie-anim">
+          <defs>${defs}</defs>
+          <g>${segs}</g>
+          <text x="110" y="105" text-anchor="middle" fill="var(--ink-faint)" font-size="10" font-family="Manrope,sans-serif" letter-spacing="1.4">TOTAL</text>
+          <text x="110" y="127" text-anchor="middle" fill="var(--ink)" font-size="19" font-weight="500" font-family="Fraunces,Georgia,serif">${this.fmt(totalValue)}</text>
+        </svg>
+        <div class="flex flex-wrap justify-center gap-x-3.5 gap-y-1.5">${legend}</div>
       </div>`;
   },
 
@@ -536,28 +579,36 @@ export const PortfolioModule = {
           </div>`;
       })()}
 
-      <div class="grid grid-cols-3 gap-2.5 mb-5">
-        <div class="well px-3.5 py-3">
-          <p class="eyebrow mb-1.5">Invested</p>
-          <p class="font-display text-[20px] font-medium num leading-none">${ratesMissing ? "…" : this.fmt(totalCost)}</p>
-        </div>
-        <div class="well px-3.5 py-3">
-          <p class="eyebrow mb-1.5">Value</p>
-          <p class="font-display text-[20px] font-medium num leading-none">${ratesMissing ? "…" : this.fmt(totalValue)}</p>
-        </div>
-        <div class="px-3.5 py-3 rounded-xl" style="background:${up ? "var(--pos-soft)" : "var(--neg-soft)"}">
-          <p class="eyebrow mb-1.5">Total return</p>
-          <p class="font-display text-[20px] font-medium num leading-none ${up ? "pos" : "neg"}">${ratesMissing ? "…" : `${up ? "+" : "−"}${this.fmt(Math.abs(totalGain))}`}</p>
-          <p class="text-[11px] num mt-0.5 ${up ? "pos" : "neg"}">${ratesMissing ? "" : `${up ? "+" : "−"}${Math.abs(totalGainPct).toFixed(1)}%`}</p>
-        </div>
-      </div>
-
       ${(() => {
+        // One headline figure, not a row of equal-weight boxes: the account total is
+        // the number being looked for, so everything else is supporting detail under it.
         const c = Store.state.settings.t212Cash;
-        if (!c || !(c.free > 0)) return "";
-        const cashConv = this.conv(c.free, c.currency);
-        if (cashConv == null || ratesMissing || totalValue == null) return "";
-        return `<p class="text-[11.5px] faint mb-4 -mt-2">Plus <span class="num" style="color:var(--ink)">${this.fmt(cashConv)}</span> uninvested cash · account total <span class="num" style="color:var(--ink)">${this.fmt(totalValue + cashConv)}</span></p>`;
+        const cash = c && c.free > 0 ? this.conv(c.free, c.currency) : null;
+        const account = ratesMissing || totalValue == null ? null : totalValue + (cash || 0);
+        const dash = `<span class="faint">…</span>`;
+        return `
+        <div class="hero mb-5">
+          <div class="hero-main">
+            <p class="eyebrow mb-1.5">${cash != null ? "Account total" : "Portfolio value"}</p>
+            <p class="font-display hero-fig num">${account == null ? dash : this.fmt(account)}</p>
+            <p class="text-[12.5px] num mt-1.5 ${up ? "pos" : "neg"}">
+              ${ratesMissing ? "" : `${up ? "+" : "−"}${this.fmt(Math.abs(totalGain))} · ${up ? "+" : "−"}${Math.abs(totalGainPct).toFixed(1)}%`}
+            </p>
+          </div>
+          <div class="hero-split">
+            <div class="hero-part">
+              <p class="eyebrow mb-1">Holdings</p>
+              <p class="num text-[14.5px] font-semibold">${ratesMissing ? dash : this.fmt(totalValue)}</p>
+              <p class="text-[11px] faint num mt-0.5">${ratesMissing ? "" : `${this.fmt(totalCost)} invested`}</p>
+            </div>
+            ${cash != null ? `
+            <div class="hero-part">
+              <p class="eyebrow mb-1">Cash</p>
+              <p class="num text-[14.5px] font-semibold">${this.fmt(cash)}</p>
+              <p class="text-[11px] faint num mt-0.5">${account ? ((cash / account) * 100).toFixed(1) : "0"}% uninvested</p>
+            </div>` : ""}
+          </div>
+        </div>`;
       })()}
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">

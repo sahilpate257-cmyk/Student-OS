@@ -101,12 +101,22 @@ const PIE_CSS = `
 .hero-part + .hero-part { border-left:1px solid var(--border); }
 @media (max-width: 380px) { .hero-fig { font-size:32px; } }
 
-/* Donut: light hairline between segments, soft lift off the surface. */
-.pie-anim { animation: pieIn .85s cubic-bezier(.22,1,.36,1) backwards; filter: drop-shadow(0 6px 16px rgba(0,0,0,.28)); }
-@keyframes pieIn { from { opacity:0; transform: scale(.92); } }
-.pie-seg { stroke: var(--surface); stroke-width:2.5; cursor:pointer; transform-origin:110px 110px; transition: transform .22s cubic-bezier(.22,1,.36,1), filter .22s ease; animation: segIn .55s ease backwards; }
+/* Allocation dial: a deliberately dark instrument panel, not a generic chart card. */
+.allocation-stage { position:relative; overflow:hidden; border:1px solid rgba(111,160,239,.18); border-radius:18px; background:#090d16; box-shadow:inset 0 1px 0 rgba(255,255,255,.045), 0 14px 30px rgba(0,0,0,.2); }
+.allocation-stage::before { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(135deg, rgba(104,158,255,.10), transparent 39%), radial-gradient(circle at 50% 48%, rgba(44,105,202,.11), transparent 42%); }
+.allocation-stage::after { content:""; position:absolute; inset:12px; border:1px solid rgba(147,184,246,.07); border-radius:13px; pointer-events:none; }
+.allocation-kicker { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; padding:15px 16px 0; }
+.allocation-dot { width:7px; height:7px; border-radius:99px; background:#66a6ff; box-shadow:0 0 12px rgba(102,166,255,.8); }
+.pie-anim { position:relative; z-index:1; animation:pieIn .75s cubic-bezier(.22,1,.36,1) backwards; filter:drop-shadow(0 15px 18px rgba(0,0,0,.44)); }
+@keyframes pieIn { from { opacity:0; transform:scale(.94) rotate(-4deg); } }
+.pie-seg { stroke:#090d16; stroke-width:3; cursor:pointer; transform-origin:110px 110px; transition:transform .22s cubic-bezier(.22,1,.36,1), filter .22s ease; animation:segIn .45s ease backwards; }
 @keyframes segIn { from { opacity:0; } }
-.pie-seg:hover { filter: brightness(1.12); transform: translate(var(--tx), var(--ty)); }
+.pie-seg:hover { filter:brightness(1.22) saturate(1.06); transform:translate(var(--tx), var(--ty)); }
+.allocation-legend { position:relative; z-index:1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; padding:0 16px 16px; }
+.allocation-item { min-width:0; padding:9px 10px; border:1px solid rgba(141,181,246,.10); border-radius:10px; background:rgba(255,255,255,.025); }
+.allocation-item:last-child:nth-child(odd) { grid-column:1 / -1; }
+.allocation-item:hover { background:rgba(91,148,238,.10); border-color:rgba(116,168,247,.24); }
+.allocation-swatch { width:7px; height:7px; border-radius:99px; flex:none; box-shadow:0 0 8px currentColor; }
 `;
 
 export const PortfolioModule = {
@@ -388,21 +398,16 @@ export const PortfolioModule = {
     this.render();
   },
 
-  // Donut, grouped to the top 5 plus "Other". A ring stops being readable past
-  // ~6 segments, so the grouping is what makes this form legitimate for a 12-stock
-  // portfolio. Segments are one hue in validated steps (an 8-step version of this
-  // ramp failed the adjacent-lightness check), with "Other" held back in neutral
-  // grey so it reads as a remainder rather than a sixth holding.
+  // The dial keeps the four largest positions explicit and treats the rest as one
+  // reserve segment. Beyond five wedges, a ring becomes decoration rather than data.
   renderPie(holdings, totalValue) {
     if (!holdings.length || totalValue == null || totalValue <= 0) {
       return `<div class="text-[13px] faint py-16 text-center">${holdings.length ? "Loading exchange rates…" : "Add a holding to see your allocation."}</div>`;
     }
 
-    // Validated ordinal ramp (dark surface): passes monotone lightness, adjacent
-    // dL and the dark-end contrast floor. Deliberately starts vivid rather than
-    // near-white - a pale top step plus the specular sweep washes the ring out.
-    const RAMP = ["#7ab6f6", "#3d8ce8", "#2367b8", "#17508f"];
-    const OTHER = "#2b3347";   // recessive navy-grey: a remainder, not a holding
+    // A tight blue family, graded by depth rather than unrelated rainbow colours.
+    const RAMP = ["#75AEFF", "#478BEA", "#2C65B7", "#1A417B"];
+    const OTHER = "#263348";
     const TOP = 4;
 
     const sorted = holdings
@@ -420,21 +425,23 @@ export const PortfolioModule = {
       });
     }
 
-    const cx = 110, cy = 110, rO = 100, rI = 58;
+    const cx = 110, cy = 110, rO = 96, rI = 55;
     let a = -Math.PI / 2;
     let defs = "";
 
-    const sheen = `
-      <linearGradient id="pie-sheen" gradientUnits="userSpaceOnUse" x1="30" y1="18" x2="178" y2="200">
-        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
-        <stop offset="34%" stop-color="#ffffff" stop-opacity="0.025"/>
-        <stop offset="62%" stop-color="#ffffff" stop-opacity="0"/>
+    const chrome = `
+      <radialGradient id="pie-core" cx="36%" cy="28%" r="72%">
+        <stop offset="0%" stop-color="#1B2740"/>
+        <stop offset="58%" stop-color="#111927"/>
+        <stop offset="100%" stop-color="#090D16"/>
+      </radialGradient>
+      <linearGradient id="pie-rim" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#B7D7FF" stop-opacity=".46"/>
+        <stop offset="46%" stop-color="#5D97E9" stop-opacity=".08"/>
+        <stop offset="100%" stop-color="#03060C" stop-opacity=".72"/>
       </linearGradient>
-      <filter id="pie-glow" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="7" result="b"/>
-        <feColorMatrix in="b" type="matrix"
-          values="0 0 0 0 0.18  0 0 0 0 0.47  0 0 0 0 0.86  0 0 0 0.42 0" result="g"/>
-        <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+      <filter id="pie-shadow" x="-30%" y="-30%" width="160%" height="160%">
+        <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#00030A" flood-opacity=".78"/>
       </filter>`;
 
     const segs = slices.map((d, i) => {
@@ -442,14 +449,10 @@ export const PortfolioModule = {
       const span = Math.min(Math.max(frac, 0) * 2 * Math.PI, 2 * Math.PI - 0.0001);
       const a0 = a, a1 = a + span;
       a = a1;
-      // Depth the way the reference does it: lift at the inner edge, deepen at the rim.
-      // Gloss, the way the reference does it: the band is lit along its inner edge,
-      // deepens toward the rim, then a soft specular sweep rides over the top-left.
       defs += `<radialGradient id="pg${i}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${rO}">
-          <stop offset="${((rI / rO) * 100).toFixed(0)}%" stop-color="${d.colour}" stop-opacity="1"/>
-          <stop offset="${(((rI / rO) + 0.16) * 100).toFixed(0)}%" stop-color="${d.colour}" stop-opacity="0.96"/>
-          <stop offset="88%" stop-color="${d.colour}" stop-opacity="0.70"/>
-          <stop offset="100%" stop-color="${d.colour}" stop-opacity="0.46"/>
+          <stop offset="${((rI / rO) * 100).toFixed(0)}%" stop-color="${d.colour}" stop-opacity=".98"/>
+          <stop offset="72%" stop-color="${d.colour}" stop-opacity=".86"/>
+          <stop offset="100%" stop-color="${d.colour}" stop-opacity=".58"/>
         </radialGradient>`;
       const pt = (r, ang) => `${(cx + r * Math.cos(ang)).toFixed(2)} ${(cy + r * Math.sin(ang)).toFixed(2)}`;
       const large = a1 - a0 > Math.PI ? 1 : 0;
@@ -461,23 +464,34 @@ export const PortfolioModule = {
     }).join("");
 
     const legend = slices.map((d) => `
-      <span class="flex items-center gap-1.5 text-[12px] muted">
-        <span class="w-2.5 h-2.5 rounded-[3px]" style="background:${d.colour}"></span>${escapeHtml(d.label)}
-        <span class="faint num">${((d.val / totalValue) * 100).toFixed(0)}%</span>
-      </span>`).join("");
+      <div class="allocation-item" tabindex="0" title="${escapeHtml(d.name)} · ${this.fmt(d.val)}">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span class="allocation-swatch" style="color:${d.colour};background:${d.colour}"></span>
+          <span class="text-[11px] font-semibold truncate" style="color:#DCEAFF">${escapeHtml(d.label)}</span>
+        </div>
+        <p class="text-[11px] mt-1 num" style="color:#8FA9CD">${this.fmt(d.val)}</p>
+      </div>`).join("");
 
     return `
-      <div class="flex flex-col items-center gap-4 pt-1">
-        <svg viewBox="0 0 220 220" class="w-56 h-56 pie-anim">
-          <defs>${defs}${sheen}</defs>
-          <g filter="url(#pie-glow)">${segs}</g>
-          <circle cx="${cx}" cy="${(cy + rO) / 2 + 2}" r="0"/>
-          <path d="M ${cx} ${cy - rO} A ${rO} ${rO} 0 1 1 ${cx - 0.01} ${cy - rO} Z M ${cx} ${cy - rI} A ${rI} ${rI} 0 1 0 ${cx + 0.01} ${cy - rI} Z"
-                fill="url(#pie-sheen)" fill-rule="evenodd" pointer-events="none"/>
-          <text x="110" y="105" text-anchor="middle" fill="var(--ink-faint)" font-size="10" font-family="Manrope,sans-serif" letter-spacing="1.4">TOTAL</text>
-          <text x="110" y="127" text-anchor="middle" fill="var(--ink)" font-size="19" font-weight="500" font-family="Fraunces,Georgia,serif">${this.fmt(totalValue)}</text>
-        </svg>
-        <div class="flex flex-wrap justify-center gap-x-3.5 gap-y-1.5">${legend}</div>
+      <div class="allocation-stage">
+        <div class="allocation-kicker">
+          <div class="flex items-center gap-2"><span class="allocation-dot"></span><span class="eyebrow" style="color:#8FA9CD">Allocation</span></div>
+          <span class="text-[10px] num" style="color:#65799A">LIVE HOLDINGS</span>
+        </div>
+        <div class="flex justify-center -mt-1">
+          <svg viewBox="0 0 220 220" class="w-60 h-60 pie-anim" role="img" aria-label="Portfolio allocation chart">
+            <defs>${defs}${chrome}</defs>
+            <circle cx="${cx}" cy="${cy}" r="101" fill="none" stroke="#17233A" stroke-width="1"/>
+            <circle cx="${cx}" cy="${cy}" r="99" fill="none" stroke="url(#pie-rim)" stroke-width="2"/>
+            <g filter="url(#pie-shadow)">${segs}</g>
+            <circle cx="${cx}" cy="${cy}" r="${rI - 3}" fill="url(#pie-core)" stroke="#314866" stroke-opacity=".65" stroke-width="1"/>
+            <circle cx="${cx}" cy="${cy}" r="${rI - 8}" fill="none" stroke="#8CB7F2" stroke-opacity=".12" stroke-width="1"/>
+            <path d="M89 103h42M110 82v42" stroke="#9CC5FF" stroke-opacity=".14" stroke-width="1"/>
+            <text x="110" y="102" text-anchor="middle" fill="#8FA9CD" font-size="9" font-family="Manrope,sans-serif" font-weight="700" letter-spacing="1.65">PORTFOLIO</text>
+            <text x="110" y="125" text-anchor="middle" fill="#F0F6FF" font-size="18" font-weight="600" font-family="Fraunces,Georgia,serif">${this.fmt(totalValue)}</text>
+          </svg>
+        </div>
+        <div class="allocation-legend">${legend}</div>
       </div>`;
   },
 

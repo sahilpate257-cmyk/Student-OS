@@ -421,15 +421,32 @@ export const PortfolioModule = {
     let a = -Math.PI / 2;
     let defs = "";
 
+    const sheen = `
+      <linearGradient id="pie-sheen" gradientUnits="userSpaceOnUse" x1="30" y1="18" x2="178" y2="200">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
+        <stop offset="34%" stop-color="#ffffff" stop-opacity="0.07"/>
+        <stop offset="62%" stop-color="#ffffff" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="pie-glow" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="7" result="b"/>
+        <feColorMatrix in="b" type="matrix"
+          values="0 0 0 0 0.22  0 0 0 0 0.53  0 0 0 0 0.90  0 0 0 0.55 0" result="g"/>
+        <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>`;
+
     const segs = slices.map((d, i) => {
       const frac = d.val / totalValue;
       const span = Math.min(Math.max(frac, 0) * 2 * Math.PI, 2 * Math.PI - 0.0001);
       const a0 = a, a1 = a + span;
       a = a1;
       // Depth the way the reference does it: lift at the inner edge, deepen at the rim.
+      // Gloss, the way the reference does it: the band is lit along its inner edge,
+      // deepens toward the rim, then a soft specular sweep rides over the top-left.
       defs += `<radialGradient id="pg${i}" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="${rO}">
           <stop offset="${((rI / rO) * 100).toFixed(0)}%" stop-color="${d.colour}" stop-opacity="1"/>
-          <stop offset="100%" stop-color="${d.colour}" stop-opacity="0.72"/>
+          <stop offset="${(((rI / rO) + 0.16) * 100).toFixed(0)}%" stop-color="${d.colour}" stop-opacity="0.96"/>
+          <stop offset="88%" stop-color="${d.colour}" stop-opacity="0.70"/>
+          <stop offset="100%" stop-color="${d.colour}" stop-opacity="0.46"/>
         </radialGradient>`;
       const pt = (r, ang) => `${(cx + r * Math.cos(ang)).toFixed(2)} ${(cy + r * Math.sin(ang)).toFixed(2)}`;
       const large = a1 - a0 > Math.PI ? 1 : 0;
@@ -449,8 +466,11 @@ export const PortfolioModule = {
     return `
       <div class="flex flex-col items-center gap-4 pt-1">
         <svg viewBox="0 0 220 220" class="w-56 h-56 pie-anim">
-          <defs>${defs}</defs>
-          <g>${segs}</g>
+          <defs>${defs}${sheen}</defs>
+          <g filter="url(#pie-glow)">${segs}</g>
+          <circle cx="${cx}" cy="${(cy + rO) / 2 + 2}" r="0"/>
+          <path d="M ${cx} ${cy - rO} A ${rO} ${rO} 0 1 1 ${cx - 0.01} ${cy - rO} Z M ${cx} ${cy - rI} A ${rI} ${rI} 0 1 0 ${cx + 0.01} ${cy - rI} Z"
+                fill="url(#pie-sheen)" fill-rule="evenodd" pointer-events="none"/>
           <text x="110" y="105" text-anchor="middle" fill="var(--ink-faint)" font-size="10" font-family="Manrope,sans-serif" letter-spacing="1.4">TOTAL</text>
           <text x="110" y="127" text-anchor="middle" fill="var(--ink)" font-size="19" font-weight="500" font-family="Fraunces,Georgia,serif">${this.fmt(totalValue)}</text>
         </svg>

@@ -26,6 +26,42 @@
     } } };
   </script>
   <style>
+    /* Ambient light. The reference's depth comes less from the components than
+       from the room they sit in: a near-black field with cool light bleeding in
+       from the top corners, so surfaces have something to catch. Dark only -
+       the light theme stays flat paper. */
+    :root[data-theme="dark"] body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background:
+        radial-gradient(1100px 620px at 12% -8%, rgba(57,135,229,.20), transparent 62%),
+        radial-gradient(820px 520px at 92% 4%, rgba(37,106,191,.15), transparent 66%),
+        radial-gradient(700px 700px at 50% 108%, rgba(99,130,210,.09), transparent 60%);
+    }
+
+    /* Glass. A lit top edge plus a cool inner wash reads as a pane catching the
+       ambient light, rather than a flat rectangle with a border. */
+    :root[data-theme="dark"] .card {
+      background: linear-gradient(162deg, rgba(32,41,63,.78), rgba(16,20,31,.88));
+      border: 1px solid rgba(124,162,226,.15);
+      box-shadow:
+        inset 0 1px 0 rgba(174,205,247,.10),
+        0 10px 34px rgba(0,0,0,.42);
+      backdrop-filter: blur(14px) saturate(1.15);
+    }
+    :root[data-theme="dark"] .well {
+      background: linear-gradient(165deg, rgba(28,36,56,.60), rgba(14,18,28,.72));
+      border: 1px solid rgba(124,162,226,.10);
+    }
+    :root[data-theme="dark"] .hero {
+      background: linear-gradient(158deg, rgba(36,48,76,.80), rgba(15,19,30,.90));
+      border-color: rgba(124,162,226,.17);
+      box-shadow: inset 0 1px 0 rgba(174,205,247,.13), 0 10px 30px rgba(0,0,0,.40);
+    }
+    :root[data-theme="dark"] .hero-split { border-top-color: rgba(124,162,226,.12); }
+    :root[data-theme="dark"] .hero-part + .hero-part { border-left-color: rgba(124,162,226,.12); }
+    :root[data-theme="dark"] header,
+    :root[data-theme="dark"] nav { border-color: rgba(124,162,226,.12) !important; }
+
     /* Installed on iOS the app draws edge to edge, so anything pinned to an edge
        has to clear the notch and the home indicator. env() is 0 in a browser tab,
        so these are inert until it is actually installed. */
@@ -491,23 +527,23 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20261003-224416",
-      "./js/store.js": "./js/store.js?v=20261003-224416",
-      "./js/icons.js": "./js/icons.js?v=20261003-224416",
-      "./js/calendar.js": "./js/calendar.js?v=20261003-224416",
-      "./js/ledger.js": "./js/ledger.js?v=20261003-224416",
-      "./js/notes.js": "./js/notes.js?v=20261003-224416",
-      "./js/gym.js": "./js/gym.js?v=20261003-224416",
-      "./js/portfolio.js": "./js/portfolio.js?v=20261003-224416",
-      "./js/intake.js": "./js/intake.js?v=20261003-224416",
-      "./js/insights.js": "./js/insights.js?v=20261003-224416"
+      "./js/app.js": "./js/app.js?v=20261003-230214",
+      "./js/store.js": "./js/store.js?v=20261003-230214",
+      "./js/icons.js": "./js/icons.js?v=20261003-230214",
+      "./js/calendar.js": "./js/calendar.js?v=20261003-230214",
+      "./js/ledger.js": "./js/ledger.js?v=20261003-230214",
+      "./js/notes.js": "./js/notes.js?v=20261003-230214",
+      "./js/gym.js": "./js/gym.js?v=20261003-230214",
+      "./js/portfolio.js": "./js/portfolio.js?v=20261003-230214",
+      "./js/intake.js": "./js/intake.js?v=20261003-230214",
+      "./js/insights.js": "./js/insights.js?v=20261003-230214"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20261003-224416";
+    var BUILD = "20261003-230214";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -548,6 +584,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20261003-224416"></script>
+  <script type="module" src="js/app.js?v=20261003-230214"></script>
 </body>
 </html>

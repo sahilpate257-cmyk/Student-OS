@@ -401,9 +401,9 @@ export const PortfolioModule = {
     // Validated ordinal ramp (dark surface): passes monotone lightness, adjacent
     // dL and the dark-end contrast floor. Deliberately starts vivid rather than
     // near-white - a pale top step plus the specular sweep washes the ring out.
-    const RAMP = ["#9ec9f9", "#62a8f2", "#3081e0", "#2063b4", "#184f95"];
+    const RAMP = ["#7ab6f6", "#3d8ce8", "#2367b8", "#17508f"];
     const OTHER = "#2b3347";   // recessive navy-grey: a remainder, not a holding
-    const TOP = 5;
+    const TOP = 4;
 
     const sorted = holdings
       .map((h) => ({ label: h.ticker, name: h.name || h.ticker, val: this.conv(h.shares * h.currentPrice, h.currency) ?? 0 }))
@@ -426,14 +426,14 @@ export const PortfolioModule = {
 
     const sheen = `
       <linearGradient id="pie-sheen" gradientUnits="userSpaceOnUse" x1="30" y1="18" x2="178" y2="200">
-        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.16"/>
-        <stop offset="34%" stop-color="#ffffff" stop-opacity="0.04"/>
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
+        <stop offset="34%" stop-color="#ffffff" stop-opacity="0.025"/>
         <stop offset="62%" stop-color="#ffffff" stop-opacity="0"/>
       </linearGradient>
       <filter id="pie-glow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="7" result="b"/>
         <feColorMatrix in="b" type="matrix"
-          values="0 0 0 0 0.22  0 0 0 0 0.53  0 0 0 0 0.90  0 0 0 0.55 0" result="g"/>
+          values="0 0 0 0 0.18  0 0 0 0 0.47  0 0 0 0 0.86  0 0 0 0.42 0" result="g"/>
         <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>`;
 

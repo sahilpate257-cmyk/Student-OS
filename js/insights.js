@@ -53,24 +53,42 @@ export const InsightsModule = {
     }));
     if (raw.some((x) => x.value == null || x.cost == null)) return null;
 
-    const h = raw.map((x) => ({
-      ticker: x.ticker, name: x.name, shares: x.shares,
-      value: +x.value.toFixed(2),
-      costBasis: +x.cost.toFixed(2),
-      gain: +(x.value - x.cost).toFixed(2),
-    }));
+    // Every total and percentage is computed HERE, exactly, and handed over
+    // finished. The model is fluent, not a calculator - asked to sum twelve
+    // numbers it previously double-counted the cash and mislabelled the result.
+    const totalValue = raw.reduce((t, x) => t + x.value, 0);
+    const totalCost = raw.reduce((t, x) => t + x.cost, 0);
+    const h = raw
+      .map((x) => ({
+        ticker: x.ticker, name: x.name, shares: x.shares,
+        value: +x.value.toFixed(2),
+        costBasis: +x.cost.toFixed(2),
+        unrealisedGain: +(x.value - x.cost).toFixed(2),
+        percentOfHoldings: +((x.value / totalValue) * 100).toFixed(1),
+      }))
+      .sort((a, b) => b.value - a.value);
     const since = taxYearStartISO();
     const tx = Store.state.transactions.filter((t) => t.date >= since);
     const sum = (type) => +tx.filter((t) => t.type === type).reduce((a, t) => a + (+t.amount || 0), 0).toFixed(2);
     const cash = Store.state.settings.t212Cash;
     const cashConv = cash ? conv(cash.free, cash.currency) : null;
     if (cash && cashConv == null) return null;
+    const cashAmt = cashConv == null ? 0 : cashConv;
+    const accountTotal = totalValue + cashAmt;
     return {
-      note: `All money figures are already converted to ${target} - do not convert them again.`,
+      note: `Every figure here is already converted to ${target} and every total and percentage is already calculated. Use these numbers exactly as given. Do NOT add, total, convert or re-derive anything.`,
       displayCurrency: cur,
       currencyCode: target,
+      totals: {
+        holdingsValue: +totalValue.toFixed(2),
+        costBasis: +totalCost.toFixed(2),
+        unrealisedGain: +(totalValue - totalCost).toFixed(2),
+        uninvestedCash: +cashAmt.toFixed(2),
+        accountTotal: +accountTotal.toFixed(2),
+        cashPercentOfAccount: +((cashAmt / accountTotal) * 100).toFixed(1),
+        holdingCount: h.length,
+      },
       holdings: h,
-      uninvestedCash: cashConv == null ? null : +cashConv.toFixed(2),
       taxYearStart: since,
       incomeThisTaxYear: sum("income"),
       spendingThisTaxYear: sum("expense"),

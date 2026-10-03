@@ -398,8 +398,11 @@ export const PortfolioModule = {
       return `<div class="text-[13px] faint py-16 text-center">${holdings.length ? "Loading exchange rates…" : "Add a holding to see your allocation."}</div>`;
     }
 
-    const RAMP = ["#cde2fb", "#86b6ef", "#3987e5", "#256abf", "#184f95"];
-    const OTHER = "#454c63";
+    // Validated ordinal ramp (dark surface): passes monotone lightness, adjacent
+    // dL and the dark-end contrast floor. Deliberately starts vivid rather than
+    // near-white - a pale top step plus the specular sweep washes the ring out.
+    const RAMP = ["#9ec9f9", "#62a8f2", "#3081e0", "#2063b4", "#184f95"];
+    const OTHER = "#2b3347";   // recessive navy-grey: a remainder, not a holding
     const TOP = 5;
 
     const sorted = holdings
@@ -423,8 +426,8 @@ export const PortfolioModule = {
 
     const sheen = `
       <linearGradient id="pie-sheen" gradientUnits="userSpaceOnUse" x1="30" y1="18" x2="178" y2="200">
-        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
-        <stop offset="34%" stop-color="#ffffff" stop-opacity="0.07"/>
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.16"/>
+        <stop offset="34%" stop-color="#ffffff" stop-opacity="0.04"/>
         <stop offset="62%" stop-color="#ffffff" stop-opacity="0"/>
       </linearGradient>
       <filter id="pie-glow" x="-30%" y="-30%" width="160%" height="160%">

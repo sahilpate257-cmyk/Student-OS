@@ -2,12 +2,13 @@
 // side-income. Income by source, effective hourly rate ("is this hustle worth it?"),
 // and a UK tax-position estimate (clearly labelled as an estimate, not advice).
 
-import { Store, escapeHtml } from "./store.js";
+import { Store, auth, escapeHtml } from "./store.js";
 import { icon } from "./icons.js";
 
 const TRADING_ALLOWANCE = 1000;   // UK £1,000 trading allowance
 const PERSONAL_ALLOWANCE = 12570; // UK personal allowance
 const BASIC_RATE = 0.2;
+const WORKER_URL = "https://ledgerly-ai-intake.sahilpatel-ledgerly.workers.dev";
 
 // UK tax year runs 6 April → 5 April
 function taxYearStartISO(d = new Date()) {
@@ -19,12 +20,87 @@ function taxYearStartISO(d = new Date()) {
 
 export const InsightsModule = {
   el: null,
+  review: null,
+  reviewing: false,
+  reviewError: null,
 
   init() {
     this.el = document.getElementById("insights-module");
     Store.subscribe("transactions:changed", () => this.render());
     Store.subscribe("settings:changed", () => this.render());
+    this.el.addEventListener("click", (e) => {
+      if (e.target.closest('[data-action="review"]')) this.runReview();
+      if (e.target.closest('[data-action="clear-review"]')) { this.review = null; this.reviewError = null; this.render(); }
+    });
     this.render();
+  },
+
+  // Only the figures needed for a description - no ids, no personal fields.
+  snapshot() {
+    const cur = Store.state.settings.currency;
+    const h = Store.state.holdings.map((x) => ({
+      ticker: x.ticker, name: x.name, currency: x.currency, shares: x.shares,
+      avgCost: x.buyPrice, price: x.currentPrice,
+      value: +(x.shares * x.currentPrice).toFixed(2),
+      gain: +((x.currentPrice - x.buyPrice) * x.shares).toFixed(2),
+    }));
+    const since = taxYearStartISO();
+    const tx = Store.state.transactions.filter((t) => t.date >= since);
+    const sum = (type) => +tx.filter((t) => t.type === type).reduce((a, t) => a + (+t.amount || 0), 0).toFixed(2);
+    const cash = Store.state.settings.t212Cash;
+    return {
+      displayCurrency: cur,
+      holdings: h,
+      uninvestedCash: cash ? { amount: cash.free, currency: cash.currency } : null,
+      taxYearStart: since,
+      incomeThisTaxYear: sum("income"),
+      spendingThisTaxYear: sum("expense"),
+      transactionCount: tx.length,
+    };
+  },
+
+  async runReview() {
+    if (this.reviewing) return;
+    this.reviewing = true;
+    this.reviewError = null;
+    this.render();
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("You need to be signed in.");
+      const res = await fetch(`${WORKER_URL}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
+        body: JSON.stringify({ snapshot: this.snapshot() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't generate a review.");
+      this.review = data.review;
+    } catch (err) {
+      this.reviewError = err.message || "Something went wrong.";
+    } finally {
+      this.reviewing = false;
+      this.render();
+    }
+  },
+
+  renderReview() {
+    if (this.reviewError) {
+      return `<p class="text-[12.5px] neg">${escapeHtml(this.reviewError)}</p>
+        <button data-action="review" class="btn btn-ghost btn-sm mt-2">Try again</button>`;
+    }
+    if (this.review) {
+      const paras = this.review.split(/\n{2,}/).filter(Boolean)
+        .map((t) => `<p class="text-[13px] mb-2.5" style="line-height:1.65">${escapeHtml(t)}</p>`).join("");
+      return `${paras}
+        <button data-action="clear-review" class="btn btn-ghost btn-sm mt-1">Close</button>`;
+    }
+    if (!Store.state.holdings.length) {
+      return `<p class="text-[12.5px] faint">Add a holding and this will describe how your money is split.</p>`;
+    }
+    return `<p class="text-[12.5px] muted mb-2.5">A plain-English description of how your money is currently split, what is carrying the gains and losses, and where your cash sits.</p>
+      <button data-action="review" class="btn btn-primary btn-sm" ${this.reviewing ? "disabled" : ""}>
+        ${this.reviewing ? "Reading your portfolio…" : "Write my review"}
+      </button>`;
   },
 
   render() {
@@ -136,6 +212,10 @@ export const InsightsModule = {
         <div>
           <p class="eyebrow mb-2">Tax position <span class="faint">· UK</span></p>
           ${taxHtml}
+        </div>
+        <div>
+          <p class="eyebrow mb-2 flex items-center gap-1.5">${icon("sparkle", 13)} Portfolio review</p>
+          <div class="well p-3.5">${this.renderReview()}</div>
         </div>
       </div>`;
   },

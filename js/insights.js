@@ -4,6 +4,7 @@
 
 import { Store, auth, escapeHtml } from "./store.js";
 import { icon } from "./icons.js";
+import { PortfolioModule } from "./portfolio.js";
 
 const TRADING_ALLOWANCE = 1000;   // UK £1,000 trading allowance
 const PERSONAL_ALLOWANCE = 12570; // UK personal allowance
@@ -36,22 +37,40 @@ export const InsightsModule = {
   },
 
   // Only the figures needed for a description - no ids, no personal fields.
+  // Every money figure is converted to ONE currency first: holdings are priced in
+  // their own market's currency, so summing them raw overstates the total by the
+  // FX rate. Returns null if rates are not loaded yet rather than sending wrong
+  // numbers - a plausible-sounding review built on bad figures is worse than none.
   snapshot() {
     const cur = Store.state.settings.currency;
-    const h = Store.state.holdings.map((x) => ({
-      ticker: x.ticker, name: x.name, currency: x.currency, shares: x.shares,
-      avgCost: x.buyPrice, price: x.currentPrice,
-      value: +(x.shares * x.currentPrice).toFixed(2),
-      gain: +((x.currentPrice - x.buyPrice) * x.shares).toFixed(2),
+    const target = PortfolioModule.displayCurrency();
+    const conv = (amt, from) => PortfolioModule.conv(amt, from);
+
+    const raw = Store.state.holdings.map((x) => ({
+      ticker: x.ticker, name: x.name, shares: x.shares,
+      value: conv(x.shares * x.currentPrice, x.currency),
+      cost: conv(x.shares * x.buyPrice, x.currency),
+    }));
+    if (raw.some((x) => x.value == null || x.cost == null)) return null;
+
+    const h = raw.map((x) => ({
+      ticker: x.ticker, name: x.name, shares: x.shares,
+      value: +x.value.toFixed(2),
+      costBasis: +x.cost.toFixed(2),
+      gain: +(x.value - x.cost).toFixed(2),
     }));
     const since = taxYearStartISO();
     const tx = Store.state.transactions.filter((t) => t.date >= since);
     const sum = (type) => +tx.filter((t) => t.type === type).reduce((a, t) => a + (+t.amount || 0), 0).toFixed(2);
     const cash = Store.state.settings.t212Cash;
+    const cashConv = cash ? conv(cash.free, cash.currency) : null;
+    if (cash && cashConv == null) return null;
     return {
+      note: `All money figures are already converted to ${target} - do not convert them again.`,
       displayCurrency: cur,
+      currencyCode: target,
       holdings: h,
-      uninvestedCash: cash ? { amount: cash.free, currency: cash.currency } : null,
+      uninvestedCash: cashConv == null ? null : +cashConv.toFixed(2),
       taxYearStart: since,
       incomeThisTaxYear: sum("income"),
       spendingThisTaxYear: sum("expense"),
@@ -67,10 +86,12 @@ export const InsightsModule = {
     try {
       const user = auth.currentUser;
       if (!user) throw new Error("You need to be signed in.");
+      const snap = this.snapshot();
+      if (!snap) throw new Error("Exchange rates are still loading — open Investments, then try again.");
       const res = await fetch(`${WORKER_URL}/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
-        body: JSON.stringify({ snapshot: this.snapshot() }),
+        body: JSON.stringify({ snapshot: snap }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't generate a review.");

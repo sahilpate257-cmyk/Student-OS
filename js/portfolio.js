@@ -488,7 +488,7 @@ export const PortfolioModule = {
             <circle cx="${cx}" cy="${cy}" r="${rI - 8}" fill="none" stroke="#8CB7F2" stroke-opacity=".12" stroke-width="1"/>
             <path d="M89 103h42M110 82v42" stroke="#9CC5FF" stroke-opacity=".14" stroke-width="1"/>
             <text x="110" y="102" text-anchor="middle" fill="#8FA9CD" font-size="9" font-family="Manrope,sans-serif" font-weight="700" letter-spacing="1.65">PORTFOLIO</text>
-            <text x="110" y="125" text-anchor="middle" fill="#F0F6FF" font-size="18" font-weight="600" font-family="Fraunces,Georgia,serif">${this.fmt(totalValue)}</text>
+            <text x="110" y="125" text-anchor="middle" fill="#F0F6FF" font-size="17" font-weight="600" font-family="IBM Plex Mono,ui-monospace,monospace">${this.fmt(totalValue)}</text>
           </svg>
         </div>
         <div class="allocation-legend">${legend}</div>

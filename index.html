@@ -19,10 +19,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
     tailwind.config = { theme: { extend: {
-      fontFamily: { sans: ['Manrope','ui-sans-serif','system-ui','sans-serif'], display: ['Fraunces','Georgia','serif'] },
+      fontFamily: { sans: ['Manrope','ui-sans-serif','system-ui','sans-serif'], display: ['Manrope','ui-sans-serif','system-ui','sans-serif'], mono: ['IBM Plex Mono','ui-monospace','monospace'] },
     } } };
   </script>
   <style>
@@ -132,8 +132,8 @@
     :root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .5; }
     * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     body { background: var(--bg); color: var(--ink); font-family: 'Manrope', system-ui, sans-serif; }
-    .font-display { font-family: 'Fraunces', Georgia, serif; }
-    .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .font-display { font-family: 'Manrope', system-ui, sans-serif; letter-spacing: -.035em; }
+    .num { font-family:'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; letter-spacing:-.035em; }
 
     /* scrollbars */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -154,7 +154,7 @@
     .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint); }
     .muted { color: var(--ink-muted); }
     .faint { color: var(--ink-faint); }
-    .sect-title { font-family:'Fraunces',serif; font-weight: 500; font-size: 19px; letter-spacing: -.01em; color: var(--ink); }
+    .sect-title { font-family:'Manrope',system-ui,sans-serif; font-weight: 600; font-size: 18px; letter-spacing: -.025em; color: var(--ink); }
     .pos { color: var(--pos); } .neg { color: var(--neg); }
 
     /* buttons */
@@ -217,8 +217,8 @@
     /* ===== landing ===== */
     .lp-wrap { max-width: 1060px; margin: 0 auto; padding-left: 22px; padding-right: 22px; }
     .lp-nav { position: sticky; top: 0; z-index: 40; background: var(--header-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
-    .lp-h1 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size: clamp(36px, 6.2vw, 60px); line-height:1.03; letter-spacing:-.022em; }
-    .lp-h2 { font-family:'Fraunces',Georgia,serif; font-weight:500; font-size: clamp(25px, 4vw, 37px); line-height:1.08; letter-spacing:-.015em; }
+    .lp-h1 { font-family:'Manrope',system-ui,sans-serif; font-weight:600; font-size: clamp(36px, 6.2vw, 60px); line-height:1.03; letter-spacing:-.045em; }
+    .lp-h2 { font-family:'Manrope',system-ui,sans-serif; font-weight:600; font-size: clamp(25px, 4vw, 37px); line-height:1.08; letter-spacing:-.04em; }
     .lp-lead { font-size: clamp(15.5px,1.7vw,18.5px); line-height:1.55; color: var(--ink-muted); }
     .lp-sec { padding: clamp(52px, 8vw, 92px) 0; }
     .lp-mock { background: var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow: var(--shadow-lg); }
@@ -527,23 +527,23 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20261003-235508",
-      "./js/store.js": "./js/store.js?v=20261003-235508",
-      "./js/icons.js": "./js/icons.js?v=20261003-235508",
-      "./js/calendar.js": "./js/calendar.js?v=20261003-235508",
-      "./js/ledger.js": "./js/ledger.js?v=20261003-235508",
-      "./js/notes.js": "./js/notes.js?v=20261003-235508",
-      "./js/gym.js": "./js/gym.js?v=20261003-235508",
-      "./js/portfolio.js": "./js/portfolio.js?v=20261003-235508",
-      "./js/intake.js": "./js/intake.js?v=20261003-235508",
-      "./js/insights.js": "./js/insights.js?v=20261003-235508"
+      "./js/app.js": "./js/app.js?v=20261003-235923",
+      "./js/store.js": "./js/store.js?v=20261003-235923",
+      "./js/icons.js": "./js/icons.js?v=20261003-235923",
+      "./js/calendar.js": "./js/calendar.js?v=20261003-235923",
+      "./js/ledger.js": "./js/ledger.js?v=20261003-235923",
+      "./js/notes.js": "./js/notes.js?v=20261003-235923",
+      "./js/gym.js": "./js/gym.js?v=20261003-235923",
+      "./js/portfolio.js": "./js/portfolio.js?v=20261003-235923",
+      "./js/intake.js": "./js/intake.js?v=20261003-235923",
+      "./js/insights.js": "./js/insights.js?v=20261003-235923"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20261003-235508";
+    var BUILD = "20261003-235923";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -584,6 +584,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20261003-235508"></script>
+  <script type="module" src="js/app.js?v=20261003-235923"></script>
 </body>
 </html>

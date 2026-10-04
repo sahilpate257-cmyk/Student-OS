@@ -140,6 +140,10 @@
     * { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     body { background: var(--bg); color: var(--ink); font-family: 'Manrope', system-ui, sans-serif; }
     .font-display { font-family: 'Manrope', system-ui, sans-serif; letter-spacing: -.035em; }
+    /* Tickers are codes, not words - monospace with open tracking is the trading
+       convention and stops them reading as plain body text beside the name. */
+    .ticker { font-family:'IBM Plex Mono', ui-monospace, monospace; font-weight:500;
+              letter-spacing:.06em; text-transform:uppercase; font-feature-settings:"tnum" 1; }
     .num { font-family:'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; letter-spacing:-.035em; }
 
     /* scrollbars */
@@ -530,23 +534,23 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20261004-001059",
-      "./js/store.js": "./js/store.js?v=20261004-001059",
-      "./js/icons.js": "./js/icons.js?v=20261004-001059",
-      "./js/calendar.js": "./js/calendar.js?v=20261004-001059",
-      "./js/ledger.js": "./js/ledger.js?v=20261004-001059",
-      "./js/notes.js": "./js/notes.js?v=20261004-001059",
-      "./js/gym.js": "./js/gym.js?v=20261004-001059",
-      "./js/portfolio.js": "./js/portfolio.js?v=20261004-001059",
-      "./js/intake.js": "./js/intake.js?v=20261004-001059",
-      "./js/insights.js": "./js/insights.js?v=20261004-001059"
+      "./js/app.js": "./js/app.js?v=20261004-001907",
+      "./js/store.js": "./js/store.js?v=20261004-001907",
+      "./js/icons.js": "./js/icons.js?v=20261004-001907",
+      "./js/calendar.js": "./js/calendar.js?v=20261004-001907",
+      "./js/ledger.js": "./js/ledger.js?v=20261004-001907",
+      "./js/notes.js": "./js/notes.js?v=20261004-001907",
+      "./js/gym.js": "./js/gym.js?v=20261004-001907",
+      "./js/portfolio.js": "./js/portfolio.js?v=20261004-001907",
+      "./js/intake.js": "./js/intake.js?v=20261004-001907",
+      "./js/insights.js": "./js/insights.js?v=20261004-001907"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20261004-001059";
+    var BUILD = "20261004-001907";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -587,6 +591,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20261004-001059"></script>
+  <script type="module" src="js/app.js?v=20261004-001907"></script>
 </body>
 </html>

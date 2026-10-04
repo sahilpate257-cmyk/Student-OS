@@ -467,7 +467,7 @@ export const PortfolioModule = {
       <div class="allocation-item" tabindex="0" title="${escapeHtml(d.name)} · ${this.fmt(d.val)}">
         <div class="flex items-center gap-1.5 min-w-0">
           <span class="allocation-swatch" style="color:${d.colour};background:${d.colour}"></span>
-          <span class="text-[11px] font-semibold truncate" style="color:#DCEAFF">${escapeHtml(d.label)}</span>
+          <span class="ticker text-[11px] truncate" style="color:#DCEAFF">${escapeHtml(d.label)}</span>
         </div>
         <p class="text-[11px] mt-1 num" style="color:#8FA9CD">${this.fmt(d.val)}</p>
       </div>`).join("");
@@ -486,7 +486,6 @@ export const PortfolioModule = {
             <g filter="url(#pie-shadow)">${segs}</g>
             <circle cx="${cx}" cy="${cy}" r="${rI - 3}" fill="url(#pie-core)" stroke="#314866" stroke-opacity=".65" stroke-width="1"/>
             <circle cx="${cx}" cy="${cy}" r="${rI - 8}" fill="none" stroke="#8CB7F2" stroke-opacity=".12" stroke-width="1"/>
-            <path d="M89 103h42M110 82v42" stroke="#9CC5FF" stroke-opacity=".14" stroke-width="1"/>
             <text x="110" y="102" text-anchor="middle" fill="#8FA9CD" font-size="9" font-family="Manrope,sans-serif" font-weight="700" letter-spacing="1.65">PORTFOLIO</text>
             <text x="110" y="125" text-anchor="middle" fill="#F0F6FF" font-size="17" font-weight="600" font-family="IBM Plex Mono,ui-monospace,monospace">${this.fmt(totalValue)}</text>
           </svg>
@@ -525,7 +524,7 @@ export const PortfolioModule = {
         <li class="flex items-center gap-3 py-2.5 group flex-wrap divide-row">
           <div class="flex-1 min-w-0">
             <p class="text-[13.5px] font-semibold truncate">${escapeHtml(h.name || h.ticker)}
-              <span class="text-[11px] faint font-normal ml-0.5">${escapeHtml(h.ticker)}</span>${
+              <span class="ticker text-[10.5px] faint ml-1">${escapeHtml(h.ticker)}</span>${
                 h.source === "t212"
                   ? `<span class="text-[9.5px] font-semibold ml-1 px-1 py-px rounded align-middle" style="background:var(--sunken);color:var(--muted)">212</span>`
                   : ""

@@ -123,6 +123,7 @@ const PIE_CSS = `
 .pf-hit:hover, .pf-hit:focus-visible { background:var(--sunken); outline:none; }
 .pf-spark { flex:none; width:56px; height:26px; }
 .pf-val { width:10.75rem; }
+@media (hover:none), (max-width:700px) { .pf-hit ~ .reveal { display:none; } }
 .pf-spark svg { display:block; width:100%; height:26px; }
 @media (max-width:700px) { .pf-avg { display:none; } .pf-spark { width:46px; } }
 @media (max-width:430px) { .pf-sh, .pf-gamt { display:none; } .pf-spark { width:40px; } .pf-val { width:5.5rem; } }
@@ -688,7 +689,7 @@ export const PortfolioModule = {
       <div id="pf-history"></div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-        <ul class="max-h-[28rem] overflow-y-auto pr-1" style="border-top:1px solid var(--border)">
+        <ul class="max-h-[28rem] overflow-y-auto overflow-x-hidden px-2 -mx-2" style="border-top:1px solid var(--border)">
           ${rows || `<li class="py-6 text-[13px] faint text-center">No holdings yet — press <span class="font-semibold" style="color:var(--ink)">Log buy</span> to add your first.</li>`}
         </ul>
         <div>${this.renderPie(holdings, ratesMissing ? null : totalValue)}</div>

@@ -24,9 +24,6 @@ export const InsightsModule = {
   review: null,
   reviewing: false,
   reviewError: null,
-  weekly: null,
-  weeklying: false,
-  weeklyError: null,
 
   init() {
     this.el = document.getElementById("insights-module");
@@ -34,8 +31,6 @@ export const InsightsModule = {
     Store.subscribe("settings:changed", () => this.render());
     this.el.addEventListener("click", (e) => {
       if (e.target.closest('[data-action="review"]')) this.runReview();
-      if (e.target.closest('[data-action="weekly"]')) this.runWeekly();
-      if (e.target.closest('[data-action="clear-weekly"]')) { this.weekly = null; this.weeklyError = null; this.render(); }
       if (e.target.closest('[data-action="clear-review"]')) { this.review = null; this.reviewError = null; this.render(); }
     });
     this.render();
@@ -125,57 +120,6 @@ export const InsightsModule = {
       this.reviewing = false;
       this.render();
     }
-  },
-
-  async runWeekly() {
-    if (this.weeklying) return;
-    this.weeklying = true;
-    this.weeklyError = null;
-    this.render();
-    try {
-      const user = auth.currentUser;
-      if (!user) throw new Error("You need to be signed in.");
-      const holdings = Store.state.holdings.map((h) => ({ ticker: h.ticker }));
-      const res = await fetch(`${WORKER_URL}/weekly`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
-        body: JSON.stringify({ holdings }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Couldn't generate the update.");
-      this.weekly = data;
-    } catch (err) {
-      this.weeklyError = err.message || "Something went wrong.";
-    } finally {
-      this.weeklying = false;
-      this.render();
-    }
-  },
-
-  renderWeekly() {
-    if (this.weeklyError) {
-      return `<p class="text-[12.5px] neg">${escapeHtml(this.weeklyError)}</p>
-        <button data-action="weekly" class="btn btn-ghost btn-sm mt-2">Try again</button>`;
-    }
-    if (this.weekly) {
-      const byId = new Map(this.weekly.sources.map((x) => [x.id, x]));
-      const cite = (t) => escapeHtml(t).replace(/\[(\d+)\]/g, (m, n) => {
-        const src = byId.get(Number(n));
-        if (!src || !/^https?:\/\//.test(src.url)) return "";
-        return `<a href="${escapeHtml(src.url)}" target="_blank" rel="noopener" title="${escapeHtml(src.title)}" style="color:var(--accent);font-size:.75em;vertical-align:super;text-decoration:none">[${n}]</a>`;
-      });
-      const paras = this.weekly.update.split(/\n+/).filter(Boolean)
-        .map((t) => `<p class="text-[13px] mb-2.5" style="line-height:1.65">${cite(t)}</p>`).join("");
-      const when = new Date(this.weekly.generatedAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      return `${paras}
-        <p class="text-[11px] faint mb-2">${this.weekly.sources.length} headlines from Finnhub, The Guardian and BBC · ${escapeHtml(when)}</p>
-        <button data-action="weekly" class="btn btn-ghost btn-sm mt-1">Refresh</button>
-        <button data-action="clear-weekly" class="btn btn-ghost btn-sm mt-1">Close</button>`;
-    }
-    return `<p class="text-[12.5px] muted mb-2.5">What happened in markets and the news this week, plus any headlines that mention your holdings. Every claim links to its source.</p>
-      <button data-action="weekly" class="btn btn-primary btn-sm" ${this.weeklying ? "disabled" : ""}>
-        ${this.weeklying ? "Reading the news…" : "Get weekly update"}
-      </button>`;
   },
 
   renderReview() {
@@ -311,10 +255,6 @@ export const InsightsModule = {
         <div>
           <p class="eyebrow mb-2 flex items-center gap-1.5">${icon("sparkle", 13)} Portfolio review</p>
           <div class="well p-3.5">${this.renderReview()}</div>
-        </div>
-        <div>
-          <p class="eyebrow mb-2 flex items-center gap-1.5">${icon("sparkle", 13)} Weekly update</p>
-          <div class="well p-3.5">${this.renderWeekly()}</div>
         </div>
       </div>`;
   },

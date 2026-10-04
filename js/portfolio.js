@@ -121,6 +121,10 @@ const PIE_CSS = `
 /* Holdings rows and the over-time card */
 .pf-hit { cursor:pointer; border-radius:12px; padding:6px 8px; margin:-6px -8px; transition:background .15s; }
 .pf-hit:hover, .pf-hit:focus-visible { background:var(--sunken); outline:none; }
+.pf-spark { flex:none; width:56px; height:26px; }
+.pf-spark svg { display:block; width:100%; height:26px; }
+@media (max-width:700px) { .pf-avg { display:none; } .pf-spark { width:46px; } }
+@media (max-width:430px) { .pf-sh, .pf-gamt { display:none; } .pf-spark { width:40px; } }
 .pf-pills { display:flex; gap:2px; padding:3px; border-radius:11px; background:var(--sunken); }
 .pf-pill { min-width:44px; height:34px; padding:0 10px; border-radius:8px; font-size:13px; font-weight:600; color:var(--ink-muted); transition:background .15s,color .15s; }
 .pf-pill:hover { color:var(--ink); }
@@ -560,12 +564,12 @@ export const PortfolioModule = {
                 h.source === "t212"
                   ? `<span class="text-[10.5px] font-semibold ml-1.5 px-1 py-px rounded align-middle" style="background:var(--sunken);color:var(--muted)">212</span>`
                   : ""
-              } · ${h.shares} sh · avg ${this.fmt(this.conv(h.buyPrice, h.currency))}</p>
+              }<span class="pf-sh"> · ${+Number(h.shares).toFixed(4)} sh</span><span class="pf-avg"> · avg ${this.fmt(this.conv(h.buyPrice, h.currency))}</span></p>
             </div>
-            ${spark ? `<span class="flex-none" aria-hidden="true">${sparkline(spark, sparkTone, { w: 52, h: 26 })}</span>` : ""}
+            <span class="pf-spark" aria-hidden="true">${spark ? sparkline(spark, sparkTone, { w: 56, h: 26 }) : ""}</span>
             <div class="text-right flex-none">
               <p class="text-[15px] font-semibold num">${this.fmt(value)}</p>
-              <p class="text-[12.5px] num ${up ? "pos" : "neg"}">${gain == null ? "…" : `${up ? "+" : "−"}${this.fmt(Math.abs(gain))} · ${up ? "+" : "−"}${Math.abs(gainPct).toFixed(1)}%`}</p>
+              <p class="text-[12.5px] num ${up ? "pos" : "neg"}">${gain == null ? "…" : `<span class="pf-gamt">${up ? "+" : "−"}${this.fmt(Math.abs(gain))} · </span>${up ? "+" : "−"}${Math.abs(gainPct).toFixed(1)}%`}</p>
             </div>
           </div>
           <button data-action="edit-holding" data-id="${h.id}" class="reveal btn-icon" style="width:28px;height:28px" title="Edit">${icon("pencil", 14)}</button>

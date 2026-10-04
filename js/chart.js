@@ -36,7 +36,7 @@ export function fmtAxis(ms, range) {
   if (range === "1D") return `${p2(d.getHours())}:${p2(d.getMinutes())}`;
   if (range === "1W") return DAYS[d.getDay()];
   if (range === "1M" || range === "3M") return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
-  if (range === "1Y") return `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+  if (range === "1Y" || range === "5Y") return `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
   return String(d.getFullYear());
 }
 

@@ -68,7 +68,12 @@ const CSS = `
 @media (prefers-reduced-motion:reduce){.hd-ov,.hd-panel,.hd-skel{animation:none}}
 `;
 
-const pctText = (x) => `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(2)}%`;
+const pctText = (x) => {
+  const a = Math.abs(x), sg = x >= 0 ? "+" : "−";
+  if (a >= 100000) return `${sg}×${(1 + a / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  if (a >= 1000) return `${sg}${a.toLocaleString(undefined, { maximumFractionDigits: 0 })}%`;
+  return `${sg}${a.toFixed(2)}%`;
+};
 const arrow = (x) => (x > 0 ? "▲" : x < 0 ? "▼" : "▬");
 const tone = (x) => (x > 0 ? "pos" : x < 0 ? "neg" : "faint");
 
@@ -385,7 +390,7 @@ export const HoldingModule = {
         <h3 class="hd-h">Your position</h3>
         <div class="hd-kv"><span>Shares</span><span class="num">${h.shares.toLocaleString("en-GB", { maximumFractionDigits: 6 })}</span></div>
         <div class="hd-kv"><span>Market value</span><span class="num">${fmt(value)}</span></div>
-        <div class="hd-kv"><span>Average cost</span><span class="num">${priceFmt(h.currency || nat)(h.buyPrice)}${h.currency && h.currency !== PortfolioModule.displayCurrency() ? `<small>${fmt(PortfolioModule.conv(h.buyPrice, h.currency))} per share</small>` : ""}</span></div>
+        <div class="hd-kv"><span>Average cost</span><span class="num">${priceFmt(h.currency || nat)(h.buyPrice)}${h.currency && h.currency !== PortfolioModule.displayCurrency() ? `<small>≈ ${fmt(PortfolioModule.conv(h.buyPrice, h.currency))} per share</small>` : ""}</span></div>
         <div class="hd-kv"><span>Total return</span><span class="num ${gain == null ? "" : tone(gain)}">${gain == null ? "…" : `${sign(gain)}${fmt(Math.abs(gain))}<small class="${tone(gain)}">${sign(gainPct)}${Math.abs(gainPct).toFixed(2)}% on ${fmt(cost)} invested</small>`}</span></div>
         <div class="hd-kv"><span>Share of holdings</span><span class="num">${ok && value != null && total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "…"}</span></div>
         ${vs != null ? `<div class="hd-kv"><span>Price vs your cost</span><span class="num ${tone(vs)}">${sign(vs)}${Math.abs(vs).toFixed(1)}%<small>${vs >= 0 ? "above" : "below"} what you paid on average</small></span></div>` : ""}

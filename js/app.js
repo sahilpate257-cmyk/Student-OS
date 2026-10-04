@@ -1,7 +1,7 @@
 // app.js — bootstrap: auth gate (email/password, forgot-password, optional TOTP 2FA),
 // persistent sessions, cloud sync wiring, module init
 
-import { Store, auth, db, todayISO } from "./store.js";
+import { Store, auth, authPersistenceReady, db, todayISO } from "./store.js";
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
   onAuthStateChanged, sendPasswordResetEmail,
@@ -172,6 +172,7 @@ const AuthGate = {
       const password = document.getElementById("auth-password").value;
       statusEl.textContent = mode === "signup" ? "Creating account…" : "Signing in…";
       try {
+        await authPersistenceReady;
         if (mode === "signup") {
           await createUserWithEmailAndPassword(auth, email, password);
         } else {
@@ -236,8 +237,9 @@ const AuthGate = {
 
     // 2FA lives inside Settings → Security → Manage
 
-    // ---- auth state: local persistence means this fires signed-in on return visits ----
-    onAuthStateChanged(auth, async (user) => {
+    // Wait until persistent storage is configured before reading the restored
+    // account, then this fires signed-in on every future visit to this origin.
+    authPersistenceReady.finally(() => onAuthStateChanged(auth, async (user) => {
       if (!user) {
         this.started = false;
         Store._uid = null;
@@ -253,7 +255,7 @@ const AuthGate = {
       if (this.started) return; // avoid double-init on token refresh
       this.started = true;
       await this.bootstrap(user.uid);
-    });
+    }));
   },
 
   friendlyError(err) {

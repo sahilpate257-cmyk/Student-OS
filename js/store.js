@@ -1,7 +1,7 @@
 // store.js — single source of truth: state, persistence, pub/sub, Firebase (modular SDK)
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getAuth, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -18,6 +18,12 @@ const firebaseConfig = {
 };
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+// Keep the session on this device until the user deliberately presses Log out.
+// Firebase defaults to this mode, but stating it explicitly prevents an SDK or
+// embedded-browser default from quietly falling back to a temporary session.
+export const authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.warn("Could not set persistent sign-in", error);
+});
 export const db = getFirestore(app);
 
 function defaultState() {

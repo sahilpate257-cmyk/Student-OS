@@ -15,6 +15,13 @@
   <meta name="apple-mobile-web-app-title" content="Ledgerly" />
   <title>Ledgerly — Your money, in command</title>
   <meta name="description" content="The command centre for people with more than one income stream." />
+  <script>
+    // A file:// preview has a different browser storage identity from Ledgerly's
+    // hosted app, so it can never share its saved sign-in. Always use one origin.
+    if (location.protocol === "file:") {
+      location.replace("https://sahilpate257-cmyk.github.io/Student-OS/");
+    }
+  </script>
   <script>(function(){try{var t=localStorage.getItem('ledgerly_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -527,23 +534,23 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20261003-235923",
-      "./js/store.js": "./js/store.js?v=20261003-235923",
-      "./js/icons.js": "./js/icons.js?v=20261003-235923",
-      "./js/calendar.js": "./js/calendar.js?v=20261003-235923",
-      "./js/ledger.js": "./js/ledger.js?v=20261003-235923",
-      "./js/notes.js": "./js/notes.js?v=20261003-235923",
-      "./js/gym.js": "./js/gym.js?v=20261003-235923",
-      "./js/portfolio.js": "./js/portfolio.js?v=20261003-235923",
-      "./js/intake.js": "./js/intake.js?v=20261003-235923",
-      "./js/insights.js": "./js/insights.js?v=20261003-235923"
+      "./js/app.js": "./js/app.js?v=20261004-000213",
+      "./js/store.js": "./js/store.js?v=20261004-000213",
+      "./js/icons.js": "./js/icons.js?v=20261004-000213",
+      "./js/calendar.js": "./js/calendar.js?v=20261004-000213",
+      "./js/ledger.js": "./js/ledger.js?v=20261004-000213",
+      "./js/notes.js": "./js/notes.js?v=20261004-000213",
+      "./js/gym.js": "./js/gym.js?v=20261004-000213",
+      "./js/portfolio.js": "./js/portfolio.js?v=20261004-000213",
+      "./js/intake.js": "./js/intake.js?v=20261004-000213",
+      "./js/insights.js": "./js/insights.js?v=20261004-000213"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20261003-235923";
+    var BUILD = "20261004-000213";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -584,6 +591,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20261003-235923"></script>
+  <script type="module" src="js/app.js?v=20261004-000213"></script>
 </body>
 </html>

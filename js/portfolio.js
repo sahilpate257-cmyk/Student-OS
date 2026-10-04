@@ -122,9 +122,10 @@ const PIE_CSS = `
 .pf-hit { cursor:pointer; border-radius:12px; padding:6px 8px; margin:-6px -8px; transition:background .15s; }
 .pf-hit:hover, .pf-hit:focus-visible { background:var(--sunken); outline:none; }
 .pf-spark { flex:none; width:56px; height:26px; }
+.pf-val { width:10.75rem; }
 .pf-spark svg { display:block; width:100%; height:26px; }
 @media (max-width:700px) { .pf-avg { display:none; } .pf-spark { width:46px; } }
-@media (max-width:430px) { .pf-sh, .pf-gamt { display:none; } .pf-spark { width:40px; } }
+@media (max-width:430px) { .pf-sh, .pf-gamt { display:none; } .pf-spark { width:40px; } .pf-val { width:5.5rem; } }
 .pf-pills { display:flex; gap:2px; padding:3px; border-radius:11px; background:var(--sunken); }
 .pf-pill { min-width:44px; height:34px; padding:0 10px; border-radius:8px; font-size:13px; font-weight:600; color:var(--ink-muted); transition:background .15s,color .15s; }
 .pf-pill:hover { color:var(--ink); }
@@ -567,7 +568,7 @@ export const PortfolioModule = {
               }<span class="pf-sh"> · ${+Number(h.shares).toFixed(4)} sh</span><span class="pf-avg"> · avg ${this.fmt(this.conv(h.buyPrice, h.currency))}</span></p>
             </div>
             <span class="pf-spark" aria-hidden="true">${spark ? sparkline(spark, sparkTone, { w: 56, h: 26 }) : ""}</span>
-            <div class="text-right flex-none">
+            <div class="pf-val text-right flex-none">
               <p class="text-[15px] font-semibold num">${this.fmt(value)}</p>
               <p class="text-[12.5px] num ${up ? "pos" : "neg"}">${gain == null ? "…" : `<span class="pf-gamt">${up ? "+" : "−"}${this.fmt(Math.abs(gain))} · </span>${up ? "+" : "−"}${Math.abs(gainPct).toFixed(1)}%`}</p>
             </div>

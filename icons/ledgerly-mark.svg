@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#75AEFF" stroke-linecap="round" stroke-linejoin="round" aria-label="Ledgerly">
+  <path d="M6 4v14h12" stroke-width="3.1"/>
+  <path d="M11 4v9" stroke-width="3.1" opacity=".78"/>
+  <path d="M11 18h7" stroke-width="3.1" opacity=".78"/>
+</svg>

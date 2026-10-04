@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="960" viewBox="0 0 1440 960" role="img" aria-label="Three Ledgerly logo concepts">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#090d16"/><stop offset="1" stop-color="#111a2b"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="13" result="b"/>
+      <feFlood flood-color="#3b82e8" flood-opacity=".25" result="c"/>
+      <feComposite in="c" in2="b" operator="in" result="g"/>
+      <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1440" height="960" fill="url(#bg)"/>
+  <circle cx="190" cy="-40" r="380" fill="#1e5da9" opacity=".13"/>
+  <circle cx="1320" cy="920" r="360" fill="#2e6fb9" opacity=".08"/>
+  <text x="96" y="105" fill="#f1f6ff" font-family="Manrope,Arial,sans-serif" font-size="40" font-weight="700" letter-spacing="-1.5">Ledgerly</text>
+  <text x="96" y="144" fill="#8fa9cd" font-family="Manrope,Arial,sans-serif" font-size="18" letter-spacing=".4">LOGO DIRECTIONS · BLUE / BLACK SYSTEM</text>
+
+  <!-- Concept 1 -->
+  <g transform="translate(96 220)">
+    <rect width="392" height="574" rx="28" fill="#0c121e" stroke="#2a3d5c"/>
+    <text x="36" y="57" fill="#8fa9cd" font-family="Manrope,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="1.7">01 / LEDGER-LINE</text>
+    <rect x="36" y="88" width="320" height="320" rx="70" fill="#08111e" stroke="#2a3d5c"/>
+    <g transform="translate(118 162)" filter="url(#glow)">
+      <path d="M42 0V126H160" fill="none" stroke="#75aeff" stroke-width="27" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M91 0V78" fill="none" stroke="#397ed7" stroke-width="27" stroke-linecap="round"/>
+      <path d="M91 126H160" fill="none" stroke="#397ed7" stroke-width="27" stroke-linecap="round"/>
+    </g>
+    <text x="36" y="461" fill="#eff6ff" font-family="Manrope,Arial,sans-serif" font-size="29" font-weight="700" letter-spacing="-1.2">Ledgerly</text>
+    <text x="36" y="495" fill="#8fa9cd" font-family="Manrope,Arial,sans-serif" font-size="16">Structured. Financial. Ownable.</text>
+    <line x1="36" y1="529" x2="356" y2="529" stroke="#24344d"/>
+    <text x="36" y="555" fill="#6680a4" font-family="IBM Plex Mono,monospace" font-size="13">BEST FOR: APP ICON + PRODUCT</text>
+  </g>
+
+  <!-- Concept 2 -->
+  <g transform="translate(524 220)">
+    <rect width="392" height="574" rx="28" fill="#0c121e" stroke="#2a3d5c"/>
+    <text x="36" y="57" fill="#8fa9cd" font-family="Manrope,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="1.7">02 / STACKED PROGRESS</text>
+    <rect x="36" y="88" width="320" height="320" rx="70" fill="#08111e" stroke="#2a3d5c"/>
+    <g transform="translate(99 147)" filter="url(#glow)">
+      <rect x="0" y="126" width="64" height="64" rx="15" fill="#245cad"/>
+      <rect x="78" y="78" width="64" height="112" rx="15" fill="#397ed7"/>
+      <rect x="156" y="0" width="64" height="190" rx="15" fill="#75aeff"/>
+      <path d="M15 111L92 62L170 -12" fill="none" stroke="#d9eaff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".82"/>
+      <path d="M154 1L171 -12L182 7" fill="none" stroke="#d9eaff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".82"/>
+    </g>
+    <text x="36" y="461" fill="#eff6ff" font-family="Manrope,Arial,sans-serif" font-size="29" font-weight="700" letter-spacing="-1.2">Ledgerly</text>
+    <text x="36" y="495" fill="#8fa9cd" font-family="Manrope,Arial,sans-serif" font-size="16">Ambitious. Practical. Energetic.</text>
+    <line x1="36" y1="529" x2="356" y2="529" stroke="#24344d"/>
+    <text x="36" y="555" fill="#6680a4" font-family="IBM Plex Mono,monospace" font-size="13">BEST FOR: STUDENT / HUSTLE BRAND</text>
+  </g>
+
+  <!-- Concept 3 -->
+  <g transform="translate(952 220)">
+    <rect width="392" height="574" rx="28" fill="#0c121e" stroke="#2a3d5c"/>
+    <text x="36" y="57" fill="#8fa9cd" font-family="Manrope,Arial,sans-serif" font-size="14" font-weight="700" letter-spacing="1.7">03 / NORTH-POINT L</text>
+    <rect x="36" y="88" width="320" height="320" rx="70" fill="#08111e" stroke="#2a3d5c"/>
+    <g transform="translate(104 146)" filter="url(#glow)">
+      <path d="M40 0V184H190" fill="none" stroke="#75aeff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M106 0L142 36L106 72L70 36Z" fill="#397ed7"/>
+      <path d="M106 10L132 36L106 62Z" fill="#d9eaff" opacity=".82"/>
+      <path d="M156 184H190" fill="none" stroke="#397ed7" stroke-width="30" stroke-linecap="round"/>
+    </g>
+    <text x="36" y="461" fill="#eff6ff" font-family="Manrope,Arial,sans-serif" font-size="29" font-weight="700" letter-spacing="-1.2">Ledgerly</text>
+    <text x="36" y="495" fill="#8fa9cd" font-family="Manrope,Arial,sans-serif" font-size="16">Directional. Calm. More premium.</text>
+    <line x1="36" y1="529" x2="356" y2="529" stroke="#24344d"/>
+    <text x="36" y="555" fill="#6680a4" font-family="IBM Plex Mono,monospace" font-size="13">BEST FOR: A BROADER LIFESTYLE APP</text>
+  </g>
+  <text x="96" y="882" fill="#6680a4" font-family="Manrope,Arial,sans-serif" font-size="16">Each concept is designed to remain recognisable at 24px and to work in a single colour.</text>
+</svg>

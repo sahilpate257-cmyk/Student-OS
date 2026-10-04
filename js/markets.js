@@ -127,7 +127,10 @@ export const MarketsModule = {
       .filter((h) => h.ticker && !seen.has(String(h.ticker).toUpperCase()) && seen.add(String(h.ticker).toUpperCase()))
       .map((h) => {
         const raw = (h.shares || 0) * (h.currentPrice || 0);
-        return { ticker: String(h.ticker).toUpperCase(), name: h.name || h.ticker, value: PortfolioModule.conv(raw, h.currency) ?? raw };
+        const ticker = String(h.ticker).toUpperCase();
+        // GBP-priced holdings are LSE listings; a bare ticker like BA is Boeing on Yahoo, not BAE Systems
+        const gbp = h.currency === "GBP";
+        return { ticker, sym: gbp ? `${ticker}.L` : ticker, us: !gbp, name: h.name || h.ticker, value: PortfolioModule.conv(raw, h.currency) ?? raw };
       })
       .sort((a, b) => b.value - a.value);
   },
@@ -135,13 +138,19 @@ export const MarketsModule = {
   async refresh() {
     if (this.loadingMarket || this.loadingNews) return;
     const hs = this.holdingsList();
-    const tickers = hs.map((h) => h.ticker);
-    const us = tickers.filter((t) => /^[A-Z]{1,5}$/.test(t)).slice(0, 8);
+    const us = hs.filter((h) => h.us && /^[A-Z]{1,5}$/.test(h.ticker)).map((h) => h.ticker).slice(0, 8);
+    const back = new Map(hs.map((h) => [h.sym, h.ticker]));
     this.loadingMarket = this.loadingNews = true;
     this.marketError = this.newsError = null;
     this.render();
-    const [m, n] = await Promise.allSettled([api("/market-data", { tickers }), api("/news", { tickers: us })]);
-    if (m.status === "fulfilled") this.market = m.value;
+    const [m, n] = await Promise.allSettled([api("/market-data", { tickers: hs.map((h) => h.sym) }), api("/news", { tickers: us })]);
+    if (m.status === "fulfilled") {
+      this.market = {
+        ...m.value,
+        holdings: m.value.holdings.map((h) => ({ ...h, ticker: back.get(h.ticker) || h.ticker })),
+        missing: (m.value.missing || []).map((t) => back.get(t) || t),
+      };
+    }
     else this.marketError = this.market ? null : m.reason.message;
     if (n.status === "fulfilled") this.news = n.value;
     else this.newsError = this.news ? null : n.reason.message;
@@ -239,8 +248,8 @@ export const MarketsModule = {
     if (!hs.length) return `<p class="mk-note">News about the companies you own will show here.</p>`;
     if (!this.news) return `<p class="mk-note">${escapeHtml(this.newsError || (this.loadingNews ? "Loading news…" : "News isn't available right now."))}</p>`;
     const names = new Map(hs.map((h) => [h.ticker, h.name]));
-    const withNews = hs.filter((h) => this.news.holdings?.[h.ticker]?.length);
-    const without = hs.filter((h) => !this.news.holdings?.[h.ticker]?.length).map((h) => h.ticker);
+    const withNews = hs.filter((h) => h.us && this.news.holdings?.[h.ticker]?.length);
+    const without = hs.filter((h) => !(h.us && this.news.holdings?.[h.ticker]?.length)).map((h) => h.ticker);
     const groups = withNews.map((h) => `
       <div class="mk-hn">
         <p class="mk-hn-head"><span class="ticker">${escapeHtml(h.ticker)}</span><span class="mk-hn-name">${escapeHtml(names.get(h.ticker) || "")}</span></p>

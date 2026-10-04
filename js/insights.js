@@ -164,7 +164,7 @@ export const InsightsModule = {
         if (!src || !/^https?:\/\//.test(src.url)) return "";
         return `<a href="${escapeHtml(src.url)}" target="_blank" rel="noopener" title="${escapeHtml(src.title)}" style="color:var(--accent);font-size:.75em;vertical-align:super;text-decoration:none">[${n}]</a>`;
       });
-      const paras = this.weekly.update.split(/\n{2,}/).filter(Boolean)
+      const paras = this.weekly.update.split(/\n+/).filter(Boolean)
         .map((t) => `<p class="text-[13px] mb-2.5" style="line-height:1.65">${cite(t)}</p>`).join("");
       const when = new Date(this.weekly.generatedAt).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
       return `${paras}

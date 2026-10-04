@@ -18,6 +18,7 @@ import { PortfolioModule } from "./portfolio.js";
 import { IntakeModule } from "./intake.js";
 import { InsightsModule } from "./insights.js";
 import { MarketsModule } from "./markets.js";
+import { HoldingModule } from "./holding.js";
 
 // Each tab is a standalone view — only one is mounted visible at a time.
 // Smart Paste isn't a tab — it's a modal reachable from the header and the
@@ -119,7 +120,7 @@ function bootstrapApp() {
   renderTabBar();
   SettingsPanel.init();
 
-  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule, MarketsModule].forEach((m) => m.init());
+  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule, MarketsModule, HoldingModule].forEach((m) => m.init());
 
   // restore the last tab this device was on
   let last = TABS[0].id;

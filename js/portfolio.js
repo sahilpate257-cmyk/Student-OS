@@ -5,6 +5,8 @@
 
 import { Store, auth, escapeHtml } from "./store.js";
 import { icon } from "./icons.js";
+import { MarketData, logoHtml, yahooSymbol, isUS } from "./marketdata.js";
+import { lineChart, sparkline } from "./chart.js";
 
 const FINNHUB_KEY = "d98ii7hr01qkl0vtf940d98ii7hr01qkl0vtf94g";
 const WORKER_URL = "https://ledgerly-ai-intake.sahilpatel-ledgerly.workers.dev";
@@ -116,6 +118,15 @@ const PIE_CSS = `
 .allocation-item { min-width:0; padding:9px 10px; border:1px solid rgba(141,181,246,.10); border-radius:10px; background:rgba(255,255,255,.025); }
 .allocation-item:last-child:nth-child(odd) { grid-column:1 / -1; }
 .allocation-item:hover { background:rgba(91,148,238,.10); border-color:rgba(116,168,247,.24); }
+/* Holdings rows and the over-time card */
+.pf-hit { cursor:pointer; border-radius:12px; padding:6px 8px; margin:-6px -8px; transition:background .15s; }
+.pf-hit:hover, .pf-hit:focus-visible { background:var(--sunken); outline:none; }
+.pf-pills { display:flex; gap:2px; padding:3px; border-radius:11px; background:var(--sunken); }
+.pf-pill { min-width:44px; height:34px; padding:0 10px; border-radius:8px; font-size:13px; font-weight:600; color:var(--ink-muted); transition:background .15s,color .15s; }
+.pf-pill:hover { color:var(--ink); }
+.pf-pill.on { background:var(--ink); color:var(--on-ink); }
+.pf-skel { height:220px; border-radius:12px; background:linear-gradient(100deg,var(--sunken) 30%,var(--surface-2) 50%,var(--sunken) 70%); background-size:300% 100%; animation:pfShimmer 1.3s linear infinite; }
+@keyframes pfShimmer { to { background-position:-100% 0; } }
 .allocation-swatch { width:7px; height:7px; border-radius:99px; flex:none; box-shadow:0 0 8px currentColor; }
 `;
 
@@ -128,6 +139,12 @@ export const PortfolioModule = {
   t212Error: null,
   t212SyncedAt: null,
   pending: null, // "reset" | "clear" - inline confirmation state
+  sparks: {},
+  sparkKey: null,
+  histRange: "1M",
+  histSig: null,
+  histSeq: 0,
+  histChart: null,
 
   init() {
     this.el = document.getElementById("portfolio-module");
@@ -193,7 +210,17 @@ export const PortfolioModule = {
         this.render();
       } else if (action === "set-portfolio-currency") {
         Store.setSetting("portfolioCurrency", btn.dataset.currency);
+      } else if (action === "open-holding") {
+        document.dispatchEvent(new CustomEvent("open-holding", { detail: { ticker: btn.dataset.ticker } }));
+      } else if (action === "set-hist-range") {
+        this.histRange = btn.dataset.range;
+        this.syncHistory();
       }
+    });
+
+    this.el.addEventListener("keydown", (e) => {
+      const hit = e.target.closest?.(".pf-hit");
+      if (hit && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); hit.click(); }
     });
 
     this.el.addEventListener("change", async (e) => {
@@ -495,6 +522,7 @@ export const PortfolioModule = {
   },
 
   render() {
+    const keepHist = this.el.querySelector("#pf-history");
     const holdings = [...Store.state.holdings];
     this.ensureRates(holdings);
 
@@ -520,20 +548,25 @@ export const PortfolioModule = {
           <button type="submit" class="btn btn-primary btn-sm">Save</button>
           <button type="button" data-action="cancel-edit" class="btn btn-ghost btn-sm">Cancel</button>
         </form>` : "";
+      const spark = this.sparks[yahooSymbol(h)];
+      const sparkTone = spark && spark[spark.length - 1] < spark[0] ? "neg" : "pos";
       return `
-        <li class="flex items-center gap-3 py-2.5 group flex-wrap divide-row">
-          <div class="flex-1 min-w-0">
-            <p class="text-[13.5px] font-semibold truncate">${escapeHtml(h.name || h.ticker)}
-              <span class="ticker text-[10.5px] faint ml-1">${escapeHtml(h.ticker)}</span>${
+        <li class="flex items-center gap-2 py-3 group flex-wrap divide-row">
+          <div class="pf-hit flex items-center gap-3 flex-1 min-w-0" data-action="open-holding" data-ticker="${escapeHtml(h.ticker)}" role="button" tabindex="0" aria-label="Open ${escapeHtml(h.name || h.ticker)}">
+            ${logoHtml(h.ticker, 38)}
+            <div class="flex-1 min-w-0">
+              <p class="text-[15px] font-semibold truncate">${escapeHtml(h.name || h.ticker)}</p>
+              <p class="text-[12.5px] faint num truncate"><span class="ticker">${escapeHtml(h.ticker)}</span>${
                 h.source === "t212"
-                  ? `<span class="text-[9.5px] font-semibold ml-1 px-1 py-px rounded align-middle" style="background:var(--sunken);color:var(--muted)">212</span>`
+                  ? `<span class="text-[10.5px] font-semibold ml-1.5 px-1 py-px rounded align-middle" style="background:var(--sunken);color:var(--muted)">212</span>`
                   : ""
-              }</p>
-            <p class="text-[11.5px] faint num">${h.shares} sh · avg ${this.fmt(this.conv(h.buyPrice, h.currency))} → ${this.fmt(this.conv(h.currentPrice, h.currency))}</p>
-          </div>
-          <div class="text-right">
-            <p class="text-[13.5px] font-semibold num">${this.fmt(value)}</p>
-            <p class="text-[11.5px] num ${up ? "pos" : "neg"}">${gain == null ? "…" : `${up ? "+" : "−"}${this.fmt(Math.abs(gain))} · ${up ? "+" : "−"}${Math.abs(gainPct).toFixed(1)}%`}</p>
+              } · ${h.shares} sh · avg ${this.fmt(this.conv(h.buyPrice, h.currency))}</p>
+            </div>
+            ${spark ? `<span class="flex-none" aria-hidden="true">${sparkline(spark, sparkTone, { w: 52, h: 26 })}</span>` : ""}
+            <div class="text-right flex-none">
+              <p class="text-[15px] font-semibold num">${this.fmt(value)}</p>
+              <p class="text-[12.5px] num ${up ? "pos" : "neg"}">${gain == null ? "…" : `${up ? "+" : "−"}${this.fmt(Math.abs(gain))} · ${up ? "+" : "−"}${Math.abs(gainPct).toFixed(1)}%`}</p>
+            </div>
           </div>
           <button data-action="edit-holding" data-id="${h.id}" class="reveal btn-icon" style="width:28px;height:28px" title="Edit">${icon("pencil", 14)}</button>
           <button data-action="delete-holding" data-id="${h.id}" class="reveal btn-icon" style="width:28px;height:28px" title="Remove">${icon("x", 15)}</button>
@@ -647,13 +680,147 @@ export const PortfolioModule = {
         </div>`;
       })()}
 
+      <div id="pf-history"></div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-        <ul class="max-h-80 overflow-y-auto pr-1" style="border-top:1px solid var(--border)">
+        <ul class="max-h-[28rem] overflow-y-auto pr-1" style="border-top:1px solid var(--border)">
           ${rows || `<li class="py-6 text-[13px] faint text-center">No holdings yet — press <span class="font-semibold" style="color:var(--ink)">Log buy</span> to add your first.</li>`}
         </ul>
         <div>${this.renderPie(holdings, ratesMissing ? null : totalValue)}</div>
       </div>
 
       <div id="pie-tooltip"></div>`;
+
+    if (keepHist) this.el.querySelector("#pf-history").replaceWith(keepHist);
+    this.syncHistory();
+    this.loadSparks();
+  },
+
+  // One 1M history call for every holding (sparklines), plus logos for US names.
+  loadSparks() {
+    const hs = Store.state.holdings;
+    const syms = [...new Set(hs.map(yahooSymbol))].sort();
+    const key = syms.join(",");
+    if (!syms.length || this.sparkKey === key) return;
+    this.sparkKey = key;
+    const chunks = [];
+    for (let i = 0; i < syms.length; i += 12) chunks.push(syms.slice(i, i + 12));
+    Promise.all(chunks.map((c) => MarketData.history(c, "1M").catch(() => null))).then((res) => {
+      const sparks = {};
+      res.forEach((r) => r?.series && Object.entries(r.series).forEach(([sym, d]) => { sparks[sym] = d.c; }));
+      this.sparks = sparks;
+      this.render();
+    });
+    MarketData.loadProfiles(hs.filter(isUS).map((h) => String(h.ticker).toUpperCase())).then(() => this.render());
+  },
+
+  // Value of today's holdings through time: shares x price x today's FX, summed per date.
+  buildHistory(range, hs, rates, seriesMap) {
+    const keyOf = range === "ALL"
+      ? (t) => { const d = new Date(t * 1000); return d.getUTCFullYear() * 12 + d.getUTCMonth(); }
+      : range === "5Y" ? (t) => Math.floor((Math.floor(t / 86400) + 3) / 7)
+      : (t) => Math.floor(t / 86400);
+    const per = [];
+    const skipped = [];
+    const keys = new Set();
+    const timeOf = new Map();
+    hs.forEach((h, i) => {
+      const d = seriesMap[yahooSymbol(h)];
+      if (!d) { skipped.push(h.ticker); return; }
+      const m = new Map();
+      d.t.forEach((t, j) => {
+        const k = keyOf(t);
+        m.set(k, d.c[j]);
+        keys.add(k);
+        if (!timeOf.has(k) || t < timeOf.get(k)) timeOf.set(k, t);
+      });
+      const sorted = [...m.keys()].sort((a, b) => a - b);
+      per.push({ h, rate: rates[i], m, keys: sorted, i: -1 });
+    });
+    if (!per.length) return null;
+    const start = Math.max(...per.map((p) => p.keys[0]));
+    const ks = [...keys].filter((k) => k >= start).sort((a, b) => a - b);
+    if (ks.length < 2) return null;
+    const points = ks.map((k) => {
+      let v = 0;
+      for (const p of per) {
+        while (p.i + 1 < p.keys.length && p.keys[p.i + 1] <= k) p.i++;
+        v += p.h.shares * p.m.get(p.keys[p.i]) * p.rate;
+      }
+      return { t: timeOf.get(k) * 1000, v };
+    });
+    return { points, skipped };
+  },
+
+  async syncHistory() {
+    const host = this.el.querySelector("#pf-history");
+    if (!host) return;
+    const hs = Store.state.holdings.filter((h) => h.shares > 0);
+    if (!hs.length) { this.histChart?.destroy(); this.histChart = null; host.innerHTML = ""; this.histSig = null; return; }
+    const rates = hs.map((h) => this.conv(1, h.currency));
+    if (rates.some((r) => r == null)) return; // render() runs again once FX arrives
+    const range = this.histRange;
+    const sig = [range, this.displayCurrency(), hs.map((h, i) => `${yahooSymbol(h)}:${h.shares}:${rates[i].toFixed(4)}`).sort().join("|")].join("#");
+    if (sig === this.histSig && host.firstChild) return;
+    this.histSig = sig;
+    const seq = ++this.histSeq;
+
+    const pills = ["1M", "3M", "1Y", "5Y", "ALL"].map((r) =>
+      `<button class="pf-pill ${r === range ? "on" : ""}" data-action="set-hist-range" data-range="${r}">${r}</button>`).join("");
+    const shell = (inner) => `
+      <div class="card card-pad mb-5">
+        <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
+          <div class="min-w-0">
+            <h3 class="sect-title">Holdings over time</h3>
+            <p class="font-display num mt-1.5" id="pfh-val" style="font-size:30px;font-weight:600;letter-spacing:-.03em;line-height:1.1"></p>
+            <p class="text-[14px] font-semibold num mt-1" id="pfh-chg"></p>
+          </div>
+          <div class="pf-pills" role="tablist" aria-label="Time range">${pills}</div>
+        </div>
+        ${inner}
+      </div>`;
+    this.histChart?.destroy();
+    this.histChart = null;
+    host.innerHTML = shell(`<div class="pf-skel"></div>`);
+
+    const syms = [...new Set(hs.map(yahooSymbol))];
+    const chunks = [];
+    for (let i = 0; i < syms.length; i += 12) chunks.push(syms.slice(i, i + 12));
+    const res = await Promise.all(chunks.map((c) => MarketData.history(c, range).catch(() => null)));
+    if (seq !== this.histSeq) return;
+    const seriesMap = {};
+    res.forEach((r) => r?.series && Object.assign(seriesMap, r.series));
+    const built = this.buildHistory(range, hs, rates, seriesMap);
+    if (!built) {
+      host.innerHTML = shell(`<p class="text-[14px] faint py-10 text-center">Price history isn't available right now.</p>`);
+      return;
+    }
+
+    const { points, skipped } = built;
+    const label = { "1M": "Past month", "3M": "Past 3 months", "1Y": "Past year", "5Y": "Past 5 years", ALL: "All available history" }[range];
+    const base = points[0].v;
+    const head = (p) => {
+      const v = p ? p.v : points[points.length - 1].v;
+      const diff = v - base;
+      const pct = base ? (v / base - 1) * 100 : 0;
+      const tn = diff >= 0 ? "pos" : "neg";
+      host.querySelector("#pfh-val").textContent = this.fmt(v);
+      const chg = host.querySelector("#pfh-chg");
+      chg.className = `text-[14px] font-semibold num mt-1 ${tn}`;
+      chg.innerHTML = `${diff >= 0 ? "▲" : "▼"} ${this.fmt(Math.abs(diff))} (${diff >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(2)}%)${p ? "" : ` <span class="faint font-medium ml-1">${label}</span>`}`;
+    };
+    const since = new Date(points[0].t).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    host.innerHTML = shell(`<div id="pfh-chart" style="margin-top:24px"></div>
+      <p class="text-[12.5px] faint mt-3" style="line-height:1.5">Your current holdings at today's exchange rates, from ${since}. It shows how today's mix has moved, not your past account balance.${skipped.length ? ` Leaves out ${skipped.map(escapeHtml).join(", ")} (no price history available).` : ""}</p>`);
+    head(null);
+    this.histChart = lineChart(host.querySelector("#pfh-chart"), {
+      points,
+      range,
+      tone: points[points.length - 1].v >= base ? "pos" : "neg",
+      height: window.matchMedia("(min-width:900px)").matches ? 280 : 220,
+      fmt: (v) => this.fmt(v),
+      label: `Holdings value, ${label}`,
+      onScrub: head,
+    });
   },
 };

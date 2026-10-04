@@ -1,27 +1,14 @@
 // markets.js — the Markets tab: index snapshot, your week, saved weekly briefing,
 // news about your holdings, and top business stories. Every headline opens the real article.
-import { Store, auth, escapeHtml } from "./store.js";
+import { Store, escapeHtml } from "./store.js";
 import { PortfolioModule } from "./portfolio.js";
+import { api, MarketData, logoHtml } from "./marketdata.js";
 
-const WORKER_URL = "https://ledgerly-ai-intake.sahilpatel-ledgerly.workers.dev";
 const CACHE_KEY = "ledgerly_markets_v1";
 const FRESH_MS = 15 * 60 * 1000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const MOVERS_SHOWN = 6;
 const STORIES_SHOWN = 6;
-
-async function api(path, body) {
-  const user = auth.currentUser;
-  if (!user) throw new Error("You need to be signed in.");
-  const res = await fetch(`${WORKER_URL}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Something went wrong.");
-  return data;
-}
 
 const pctText = (x) => (x == null ? "—" : `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x).toFixed(2)}%`);
 const arrow = (x) => (x > 0 ? "▲" : x < 0 ? "▼" : "▬");
@@ -106,7 +93,13 @@ export const MarketsModule = {
       if (c) { this.market = c.market; this.news = c.news; this.at = c.at || 0; }
     } catch (e) {}
     Store.subscribe("settings:changed", () => this.render());
+    this.el.addEventListener("keydown", (e) => {
+      const o = e.target.closest?.("[data-open]");
+      if (o && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); o.click(); }
+    });
     this.el.addEventListener("click", (e) => {
+      const open = e.target.closest("[data-open]")?.dataset.open;
+      if (open) return document.dispatchEvent(new CustomEvent("open-holding", { detail: { ticker: open } }));
       const a = e.target.closest("[data-mk]")?.dataset.mk;
       if (a === "refresh") this.refresh();
       else if (a === "movers") { this.allMovers = !this.allMovers; this.render(); }
@@ -160,6 +153,7 @@ export const MarketsModule = {
     }
     this.loadingMarket = this.loadingNews = false;
     this.render();
+    MarketData.loadProfiles(us).then(() => this.render());
   },
 
   async writeBriefing() {
@@ -217,8 +211,8 @@ export const MarketsModule = {
     const shown = this.allMovers ? rows : rows.slice(0, MOVERS_SHOWN);
     const missing = this.market?.missing || [];
     return `<ul class="mk-movers">${shown.map((h) => `
-        <li class="mk-mover">
-          <div class="min-w-0"><p class="ticker mk-m-tk">${escapeHtml(h.ticker)}</p><p class="mk-m-nm">${escapeHtml(names.get(h.ticker) || "")}</p></div>
+        <li class="mk-mover mk-open" data-open="${escapeHtml(h.ticker)}" role="button" tabindex="0" aria-label="Open ${escapeHtml(names.get(h.ticker) || h.ticker)}">
+          <div class="flex items-center gap-3 min-w-0">${logoHtml(h.ticker, 34)}<div class="min-w-0"><p class="ticker mk-m-tk">${escapeHtml(h.ticker)}</p><p class="mk-m-nm">${escapeHtml(names.get(h.ticker) || "")}</p></div></div>
           ${spark(h.closes, h.weekPct)}
           <p class="mk-m-pct num ${dir(h.weekPct)}">${pctText(h.weekPct)}</p>
         </li>`).join("")}</ul>
@@ -252,7 +246,7 @@ export const MarketsModule = {
     const without = hs.filter((h) => !(h.us && this.news.holdings?.[h.ticker]?.length)).map((h) => h.ticker);
     const groups = withNews.map((h) => `
       <div class="mk-hn">
-        <p class="mk-hn-head"><span class="ticker">${escapeHtml(h.ticker)}</span><span class="mk-hn-name">${escapeHtml(names.get(h.ticker) || "")}</span></p>
+        <p class="mk-hn-head mk-open" data-open="${escapeHtml(h.ticker)}" role="button" tabindex="0">${logoHtml(h.ticker, 22)}<span class="ticker">${escapeHtml(h.ticker)}</span><span class="mk-hn-name">${escapeHtml(names.get(h.ticker) || "")}</span></p>
         ${this.news.holdings[h.ticker].slice(0, 2).map(story).join("")}
       </div>`).join("");
     return `${groups || `<p class="mk-note">No recent headlines about your US-listed holdings.</p>`}

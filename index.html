@@ -488,6 +488,8 @@
       <button id="smart-paste-strip" class="w-full flex items-center gap-3 mb-4 px-4 py-3 rounded-2xl text-left transition"
               style="background:var(--surface);border:1px solid var(--border)"></button>
 
+      <section id="news-module" class="hidden card card-pad mb-4"></section>
+
       <section id="portfolio-module" class="tab-view hidden card card-pad"></section>
       <section id="ledger-module" class="tab-view hidden card card-pad"></section>
       <section id="insights-module" class="tab-view hidden card card-pad"></section>
@@ -517,6 +519,11 @@
     .nav-btn.active { color: var(--ink); }
     .nav-btn.active .nav-ic { background: var(--ink); color: var(--on-ink); }
     @media (min-width: 640px) { .nav-btn { font-size:10.5px; } .nav-ic { width:38px; } }
+    .news-row { display:block; padding:9px 0; border-top:1px solid var(--border); text-decoration:none; color:inherit; }
+    .news-row:first-of-type { border-top:0; }
+    .news-title { display:block; font-size:13.5px; line-height:1.4; font-weight:500; }
+    .news-meta { display:block; margin-top:2px; font-size:11px; color:var(--ink-faint); }
+    .news-row:active .news-title, .news-row:hover .news-title { color:var(--accent); }
     .tab-view.is-active { display:block; animation: tabIn .28s cubic-bezier(.22,1,.36,1) backwards; }
     @keyframes tabIn { from { opacity:0; transform: translateY(7px); } }
 
@@ -534,23 +541,24 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20261004-003552",
-      "./js/store.js": "./js/store.js?v=20261004-003552",
-      "./js/icons.js": "./js/icons.js?v=20261004-003552",
-      "./js/calendar.js": "./js/calendar.js?v=20261004-003552",
-      "./js/ledger.js": "./js/ledger.js?v=20261004-003552",
-      "./js/notes.js": "./js/notes.js?v=20261004-003552",
-      "./js/gym.js": "./js/gym.js?v=20261004-003552",
-      "./js/portfolio.js": "./js/portfolio.js?v=20261004-003552",
-      "./js/intake.js": "./js/intake.js?v=20261004-003552",
-      "./js/insights.js": "./js/insights.js?v=20261004-003552"
+      "./js/app.js": "./js/app.js?v=20261004-004316",
+      "./js/store.js": "./js/store.js?v=20261004-004316",
+      "./js/icons.js": "./js/icons.js?v=20261004-004316",
+      "./js/calendar.js": "./js/calendar.js?v=20261004-004316",
+      "./js/ledger.js": "./js/ledger.js?v=20261004-004316",
+      "./js/notes.js": "./js/notes.js?v=20261004-004316",
+      "./js/gym.js": "./js/gym.js?v=20261004-004316",
+      "./js/portfolio.js": "./js/portfolio.js?v=20261004-004316",
+      "./js/intake.js": "./js/intake.js?v=20261004-004316",
+      "./js/insights.js": "./js/insights.js?v=20261004-004316",
+      "./js/news.js": "./js/news.js?v=20261004-004316"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20261004-003552";
+    var BUILD = "20261004-004316";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -591,6 +599,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20261004-003552"></script>
+  <script type="module" src="js/app.js?v=20261004-004316"></script>
 </body>
 </html>

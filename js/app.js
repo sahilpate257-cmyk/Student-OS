@@ -17,6 +17,7 @@ import { GymModule } from "./gym.js";
 import { PortfolioModule } from "./portfolio.js";
 import { IntakeModule } from "./intake.js";
 import { InsightsModule } from "./insights.js";
+import { NewsModule } from "./news.js";
 
 // Each tab is a standalone view — only one is mounted visible at a time.
 // Smart Paste isn't a tab — it's a modal reachable from the header and the
@@ -70,6 +71,7 @@ function showTab(id) {
     el.classList.remove("is-active");
     if (on) { void el.offsetWidth; el.classList.add("is-active"); }
   });
+  document.getElementById("news-module")?.classList.toggle("hidden", id !== "portfolio-module");
   document.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("active", b.dataset.nav === id));
   try { localStorage.setItem(TAB_KEY, id); } catch (e) {}
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
@@ -116,7 +118,7 @@ function bootstrapApp() {
   renderTabBar();
   SettingsPanel.init();
 
-  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule].forEach((m) => m.init());
+  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule, NewsModule].forEach((m) => m.init());
 
   // restore the last tab this device was on
   let last = TABS[0].id;

@@ -123,7 +123,7 @@ export const MarketsModule = {
         const ticker = String(h.ticker).toUpperCase();
         // GBP-priced holdings are LSE listings; a bare ticker like BA is Boeing on Yahoo, not BAE Systems
         const gbp = h.currency === "GBP";
-        return { ticker, sym: gbp ? `${ticker}.L` : ticker, us: !gbp, name: h.name || h.ticker, value: PortfolioModule.conv(raw, h.currency) ?? raw };
+        return { ticker, sym: gbp ? `${ticker}.L` : ticker, us: !gbp, cur: h.currency || "USD", name: h.name || h.ticker, value: PortfolioModule.conv(raw, h.currency) ?? raw };
       })
       .sort((a, b) => b.value - a.value);
   },
@@ -165,9 +165,15 @@ export const MarketsModule = {
       if (!this.market) await this.refresh();
       const hs = this.holdingsList();
       const names = new Map(hs.map((h) => [h.ticker, h.name]));
+      const curOf = new Map(hs.map((h) => [h.ticker, h.cur]));
       const market = {
         indices: (this.market?.indices || []).map(({ name, price, dayPct, weekPct }) => ({ name, price, dayPct, weekPct })),
-        holdings: (this.market?.holdings || []).map((h) => ({ ticker: h.ticker, name: names.get(h.ticker) || h.ticker, dayPct: h.dayPct, weekPct: h.weekPct })),
+        holdings: (this.market?.holdings || []).map((h) => ({
+          ticker: h.ticker,
+          name: names.get(h.ticker) || h.ticker,
+          dayPct: h.dayPct,
+          weekPct: this.fxWeekPct(h.weekPct, curOf.get(h.ticker)).pct,
+        })),
       };
       const data = await api("/weekly", { holdings: hs.map((h) => ({ ticker: h.ticker })), market });
       const cited = new Set([...data.update.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
@@ -200,11 +206,30 @@ export const MarketsModule = {
       </div>`).join("")}</div>`;
   },
 
+  // Yahoo reports each stock's move in its own market's currency. A US stock up 2%
+  // is not up 2% for someone whose account is in pounds, because the pound moved
+  // too. Convert through the GBP/USD week move so the figure matches what actually
+  // happened to their money. Currencies with no FX series here are left alone.
+  fxWeekPct(pct, nativeCur) {
+    const disp = PortfolioModule.displayCurrency();
+    const native = nativeCur === "GBP" ? "GBP" : nativeCur === "USD" ? "USD" : null;
+    if (pct == null || native == null || native === disp) return { pct, converted: false };
+    const fx = (this.market?.indices || []).find((i) => i.symbol === "GBPUSD=X");
+    if (!fx || typeof fx.weekPct !== "number") return { pct, converted: false };
+    const g = 1 + pct / 100, f = 1 + fx.weekPct / 100;
+    // GBPUSD is dollars per pound: a dollar asset is worth less in pounds when the pound rises.
+    const out = native === "USD" ? g / f - 1 : g * f - 1;
+    return { pct: Math.round(out * 10000) / 100, converted: true };
+  },
+
   weekHtml() {
     const hs = this.holdingsList();
     if (!hs.length) return `<p class="mk-note">Add holdings in the Invest tab and their weekly moves will show here.</p>`;
     const names = new Map(hs.map((h) => [h.ticker, h.name]));
-    const rows = [...(this.market?.holdings || [])].sort((a, b) => Math.abs(b.weekPct) - Math.abs(a.weekPct));
+    const cur = new Map(hs.map((h) => [h.ticker, h.cur]));
+    const rows = (this.market?.holdings || [])
+      .map((h) => { const a = this.fxWeekPct(h.weekPct, cur.get(h.ticker)); return { ...h, weekPct: a.pct, converted: a.converted }; })
+      .sort((a, b) => Math.abs(b.weekPct) - Math.abs(a.weekPct));
     if (!rows.length) {
       return `<p class="mk-note">${escapeHtml(this.marketError || (this.loadingMarket ? "Loading prices…" : "No price history available for your holdings yet."))}</p>`;
     }
@@ -217,6 +242,7 @@ export const MarketsModule = {
           <p class="mk-m-pct num ${dir(h.weekPct)}">${pctText(h.weekPct)}</p>
         </li>`).join("")}</ul>
       ${rows.length > MOVERS_SHOWN ? `<button data-mk="movers" class="btn btn-ghost btn-sm mt-2">${this.allMovers ? "Show fewer" : `Show all ${rows.length}`}</button>` : ""}
+      ${rows.some((r) => r.converted) ? `<p class="mk-foot">Moves are shown in ${PortfolioModule.displayCurrency() === "GBP" ? "pounds" : "dollars"}, so they include the week's currency move as well as the share price.</p>` : ""}
       ${missing.length ? `<p class="mk-foot">No price history for ${missing.map(escapeHtml).join(", ")}.</p>` : ""}`;
   },
 

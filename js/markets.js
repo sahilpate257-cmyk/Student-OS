@@ -256,7 +256,7 @@ export const MarketsModule = {
         ${this.news.holdings[h.ticker].slice(0, 2).map(story).join("")}
       </div>`).join("");
     return `${groups || `<p class="mk-note">No recent headlines about your US-listed holdings.</p>`}
-      ${without.length ? `<p class="mk-foot">No coverage for ${without.map(escapeHtml).join(", ")} (non-US listings or a quiet week).</p>` : ""}`;
+      ${without.length ? `<p class="mk-foot">No coverage for ${without.map(escapeHtml).join(", ")} (US-listed stocks only, and not every stock has news each week).</p>` : ""}`;
   },
 
   topHtml() {

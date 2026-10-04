@@ -123,10 +123,12 @@ const PIE_CSS = `
 .pf-hit:hover, .pf-hit:focus-visible { background:var(--sunken); outline:none; }
 .pf-spark { flex:none; width:56px; height:26px; }
 .pf-val { width:10.75rem; }
-@media (hover:none), (max-width:700px) { .pf-hit ~ .reveal { display:none; } }
+@media (hover:none) { .pf-hit ~ .reveal { display:none; } }
+.pf-list { container-type:inline-size; }
 .pf-spark svg { display:block; width:100%; height:26px; }
-@media (max-width:700px) { .pf-avg { display:none; } .pf-spark { width:46px; } }
-@media (max-width:430px) { .pf-sh, .pf-gamt { display:none; } .pf-spark { width:40px; } .pf-val { width:5.5rem; } }
+@container (max-width:600px) { .pf-avg { display:none; } }
+@container (max-width:460px) { .pf-spark { width:46px; } .pf-gamt { display:none; } .pf-val { width:5.5rem; } .pf-hit ~ .reveal { display:none; } }
+@container (max-width:360px) { .pf-sh { display:none; } .pf-spark { width:40px; } }
 .pf-pills { display:flex; gap:2px; padding:3px; border-radius:11px; background:var(--sunken); }
 .pf-pill { min-width:44px; height:34px; padding:0 10px; border-radius:8px; font-size:13px; font-weight:600; color:var(--ink-muted); transition:background .15s,color .15s; }
 .pf-pill:hover { color:var(--ink); }
@@ -688,8 +690,8 @@ export const PortfolioModule = {
 
       <div id="pf-history"></div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-        <ul class="max-h-[28rem] overflow-y-auto overflow-x-hidden px-2 -mx-2" style="border-top:1px solid var(--border)">
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-5 items-start">
+        <ul class="pf-list max-h-[28rem] overflow-y-auto overflow-x-hidden px-2 -mx-2" style="border-top:1px solid var(--border)">
           ${rows || `<li class="py-6 text-[13px] faint text-center">No holdings yet — press <span class="font-semibold" style="color:var(--ink)">Log buy</span> to add your first.</li>`}
         </ul>
         <div>${this.renderPie(holdings, ratesMissing ? null : totalValue)}</div>

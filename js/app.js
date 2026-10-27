@@ -296,6 +296,12 @@ const AuthGate = {
     this._unsubSnapshot = onSnapshot(docRef, (snap) => {
       if (snap.exists()) Store.applyRemote(snap.data());
     });
+    // Send anything queued while signed out or offline.
+    Store.flush();
+    if (!window.__ledgerlyOnline) {
+      window.__ledgerlyOnline = true;
+      window.addEventListener("online", () => Store.flush());
+    }
 
     bootstrapApp();
     SecurityPanel.init();

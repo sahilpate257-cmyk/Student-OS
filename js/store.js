@@ -4,6 +4,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getAuth, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, serverTimestamp, runTransaction,
+  collection, onSnapshot, deleteDoc, getDocs,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const KEY = "student_os_v1";
@@ -116,6 +117,54 @@ export const Store = {
     }
   },
 
+  // ---- Notes: once settings.notesStore === "collection" each note is its own document at
+  // users/{uid}/notes/{id}, so notes (and photos inside them) never press on the 1 MB main doc.
+  _notes: null,
+  _notesUnsub: null,
+  _notesMigrating: false,
+
+  notesInCollection() { return this.state.settings?.notesStore === "collection"; },
+
+  _watchNotes() {
+    if (this._notesUnsub || !this._uid) return;
+    this._notesUnsub = onSnapshot(collection(db, "users", this._uid, "notes"), (snap) => {
+      this._notes = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      this.state.notes = this._notes;
+      this.emit("notes:changed");
+    }, (e) => console.warn("Notes listener failed", e));
+  },
+
+  stopNotes() {
+    if (this._notesUnsub) { this._notesUnsub(); this._notesUnsub = null; }
+    this._notes = null;
+  },
+
+  // Copies legacy notes into the collection, then flips the shared flag so the phone follows.
+  // The old notes array stays in the main document untouched, as a backup.
+  async _migrateNotes() {
+    if (this._notesMigrating || !this._uid || this.notesInCollection()) return;
+    this._notesMigrating = true;
+    try {
+      const existing = await getDocs(collection(db, "users", this._uid, "notes"));
+      const have = new Set(existing.docs.map((d) => d.id));
+      for (const n of this.state.notes || []) {
+        if (n && n.id && !have.has(n.id)) await setDoc(doc(db, "users", this._uid, "notes", n.id), clean(n));
+      }
+      this.setSetting("notesStore", "collection");
+    } catch (e) {
+      // Rules don't allow sub-collections yet: notes stay in the main document.
+      if (e?.code !== "permission-denied") console.warn("Notes migration failed", e);
+    } finally {
+      this._notesMigrating = false;
+    }
+  },
+
+  _writeNote(kind, id, item) {
+    if (!this._uid) return;
+    const ref = doc(db, "users", this._uid, "notes", id);
+    (kind === "remove" ? deleteDoc(ref) : setDoc(ref, clean(item))).catch((e) => console.warn("Note sync failed", e));
+  },
+
   // Applied when a Firestore snapshot arrives (this device's own write or another device's).
   // Deliberately does not call save()/pushToCloud() to avoid a write feedback loop.
   applyRemote(remoteState) {
@@ -129,6 +178,12 @@ export const Store = {
       if (op.kind === "remove") { if (i >= 0) list.splice(i, 1); }
       else if (i >= 0) list[i] = { ...list[i], ...op.item };
       else list.push(op.item);
+    }
+    if (this.notesInCollection()) {
+      this._watchNotes();
+      if (this._notes) this.state.notes = this._notes;
+    } else {
+      this._migrateNotes();
     }
     localStorage.setItem(KEY, JSON.stringify(this.state));
     ["deadlines", "tasks", "transactions", "notes", "workouts", "holdings"].forEach((c) => this.emit(`${c}:changed`));
@@ -148,7 +203,14 @@ export const Store = {
   },
 
   add(collection, item) {
+    if (collection === "notes") item.updatedAt = new Date().toISOString();
     this.state[collection].push(item);
+    if (collection === "notes" && this.notesInCollection()) {
+      this._writeNote("upsert", item.id, item);
+      localStorage.setItem(KEY, JSON.stringify(this.state));
+      this.emit("notes:changed");
+      return item;
+    }
     this.save({ coll: collection, kind: "upsert", id: item.id, item: JSON.parse(JSON.stringify(item)) });
     this.emit(`${collection}:changed`);
     return item;
@@ -158,12 +220,27 @@ export const Store = {
     const item = this.state[collection].find((i) => i.id === id);
     if (!item) return;
     Object.assign(item, patch);
+    if (collection === "notes") {
+      item.updatedAt = new Date().toISOString();
+      if (this.notesInCollection()) {
+        this._writeNote("upsert", id, item);
+        localStorage.setItem(KEY, JSON.stringify(this.state));
+        this.emit("notes:changed");
+        return;
+      }
+    }
     this.save({ coll: collection, kind: "upsert", id, item: JSON.parse(JSON.stringify(item)) });
     this.emit(`${collection}:changed`);
   },
 
   remove(collection, id) {
     this.state[collection] = this.state[collection].filter((i) => i.id !== id);
+    if (collection === "notes" && this.notesInCollection()) {
+      this._writeNote("remove", id);
+      localStorage.setItem(KEY, JSON.stringify(this.state));
+      this.emit("notes:changed");
+      return;
+    }
     this.save({ coll: collection, kind: "remove", id });
     this.emit(`${collection}:changed`);
   },
@@ -174,6 +251,9 @@ export const Store = {
     this.emit("settings:changed");
   },
 };
+
+// Firestore rejects undefined values; a JSON round trip drops them.
+function clean(o) { return JSON.parse(JSON.stringify(o)); }
 
 // ---- shared helpers ----
 

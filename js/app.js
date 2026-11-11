@@ -19,11 +19,18 @@ import { IntakeModule } from "./intake.js";
 import { InsightsModule } from "./insights.js";
 import { MarketsModule } from "./markets.js";
 import { HoldingModule } from "./holding.js";
+import { HomeModule } from "./home.js";
+import { Theme } from "./theme.js";
+
+Theme.init();
+const DENSITY_KEY = "ledgerly_density";
+try { document.documentElement.setAttribute("data-density", localStorage.getItem(DENSITY_KEY) || "comfortable"); } catch (e) {}
 
 // Each tab is a standalone view — only one is mounted visible at a time.
 // Smart Paste isn't a tab — it's a modal reachable from the header and the
 // persistent strip above these tabs, since one paste can fill several of them at once.
 const TABS = [
+  { id: "home-module", icon: "home", label: "Home" },
   { id: "portfolio-module", icon: "trending", label: "Invest" },
   { id: "markets-module", icon: "news", label: "Markets" },
   { id: "ledger-module", icon: "wallet", label: "Cash" },
@@ -56,12 +63,15 @@ function renderTabBar() {
     <button data-nav="${t.id}" class="nav-btn" title="${t.label}">
       <span class="nav-ic">${icon(t.icon, 18)}</span><span>${t.label}</span>
     </button>`).join("");
-  bar.querySelectorAll("[data-nav]").forEach((btn) =>
+  const side = document.getElementById("side-tabs");
+  if (side) side.innerHTML = tabs.map((t) => `
+    <button data-nav="${t.id}" class="side-btn" title="${t.label}">${icon(t.icon, 18)}<span>${t.label}</span></button>`).join("");
+  document.querySelectorAll("#tab-bar [data-nav], #side-tabs [data-nav]").forEach((btn) =>
     btn.addEventListener("click", () => showTab(btn.dataset.nav))
   );
   // keep the active highlight in sync with whatever view is showing
   const current = document.querySelector(".tab-view:not(.hidden)")?.id;
-  if (current) bar.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("active", b.dataset.nav === current));
+  if (current) document.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("active", b.dataset.nav === current));
 }
 
 function showTab(id) {
@@ -77,17 +87,28 @@ function showTab(id) {
   try { localStorage.setItem(TAB_KEY, id); } catch (e) {}
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   if (id === "markets-module") MarketsModule.onShow();
+  if (id === "home-module") HomeModule.render();
+}
+window.ledgerlyShowTab = showTab;
+
+// Light/dark is now a mode of the active colour theme (see theme.js); kept as a function so the
+// header button and settings share one path.
+function applyTheme(mode) {
+  Theme.setMode(mode);
 }
 
-function applyTheme(t) {
-  document.documentElement.setAttribute("data-theme", t);
-  try { localStorage.setItem("ledgerly_theme", t); } catch (e) {}
+function syncThemeChrome() {
+  const dark = Theme.isDark();
   const b = document.getElementById("theme-btn");
-  if (b) b.innerHTML = icon(t === "dark" ? "sun" : "moon", 17);
+  if (b) b.innerHTML = icon(dark ? "sun" : "moon", 17);
+  const sb = document.getElementById("side-theme");
+  if (sb) sb.innerHTML = `${icon(dark ? "sun" : "moon", 18)}<span>${dark ? "Light mode" : "Dark mode"}</span>`;
   // The allocation donut bakes hex values into the SVG, and each theme uses a
   // different palette, so it has to be redrawn rather than just recoloured.
   if (PortfolioModule.el) PortfolioModule.render();
+  if (HomeModule.el) HomeModule.render();
 }
+Theme.onChange(syncThemeChrome);
 
 function bootstrapApp() {
   document.getElementById("header-date").textContent =
@@ -99,10 +120,12 @@ function bootstrapApp() {
   document.getElementById("quick-add").innerHTML = icon("sparkle", 15) + "<span>Smart Paste</span>";
 
   // theme toggle (device-level preference, applied pre-paint by the head script)
-  applyTheme(document.documentElement.getAttribute("data-theme") || "light");
-  document.getElementById("theme-btn").addEventListener("click", () => {
-    applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
-  });
+  syncThemeChrome();
+  const flip = () => applyTheme(Theme.isDark() ? "light" : "dark");
+  document.getElementById("theme-btn").addEventListener("click", flip);
+  document.getElementById("side-theme").addEventListener("click", flip);
+  document.getElementById("side-settings").innerHTML = `${icon("cog", 18)}<span>Settings</span>`;
+  document.getElementById("side-settings").addEventListener("click", () => { SettingsPanel.toggle(true); });
 
   // persistent strip above the tabs — same trigger as the header button
   const strip = document.getElementById("smart-paste-strip");
@@ -120,7 +143,7 @@ function bootstrapApp() {
   renderTabBar();
   SettingsPanel.init();
 
-  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule, MarketsModule, HoldingModule].forEach((m) => m.init());
+  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule, MarketsModule, HoldingModule, HomeModule].forEach((m) => m.init());
 
   // restore the last tab this device was on
   let last = TABS[0].id;
@@ -134,6 +157,16 @@ const AuthGate = {
   _mfaResolver: null,
 
   init() {
+    // Localhost-only preview with sample data and no account (?demo). Inert on the live site.
+    if (["localhost", "127.0.0.1"].includes(location.hostname) && new URLSearchParams(location.search).has("demo")) {
+      import("./demo.js").then(({ demoState }) => {
+        Store.state = demoState();
+        document.getElementById("landing").classList.add("hidden");
+        document.getElementById("app-shell").classList.remove("hidden");
+        bootstrapApp();
+      });
+      return;
+    }
     const shell = document.getElementById("app-shell");
     const overlay = document.getElementById("auth-overlay");
     const authForm = document.getElementById("auth-form");
@@ -236,6 +269,7 @@ const AuthGate = {
     // ---- sign out ----
     document.getElementById("sign-out").addEventListener("click", async () => {
       if (this._unsubSnapshot) { this._unsubSnapshot(); this._unsubSnapshot = null; }
+      Store.stopNotes();
       await signOut(auth);
     });
 
@@ -248,6 +282,7 @@ const AuthGate = {
         this.started = false;
         Store._uid = null;
         if (this._unsubSnapshot) { this._unsubSnapshot(); this._unsubSnapshot = null; }
+        Store.stopNotes();
         showView("landing");
         return;
       }
@@ -342,6 +377,7 @@ const SecurityPanel = {
   },
 
   toggle(force) {
+    if (!this.el) return;   // not set up yet (e.g. the localhost demo has no account)
     this.open = force ?? !this.open;
     if (!this.open) this.pendingSecret = null;
     this.el.classList.toggle("hidden", !this.open);
@@ -489,6 +525,12 @@ const SettingsPanel = {
       const { action, id, theme } = btn.dataset;
       if (action === "close-settings") return this.toggle(false);
       if (action === "set-theme") { applyTheme(theme); return this.render(); }
+      if (action === "set-palette") { Theme.setPalette(btn.dataset.palette); return this.render(); }
+      if (action === "set-density") {
+        try { localStorage.setItem(DENSITY_KEY, btn.dataset.density); } catch (err) {}
+        document.documentElement.setAttribute("data-density", btn.dataset.density);
+        return this.render();
+      }
       if (action === "open-security") { this.toggle(false); return SecurityPanel.toggle(true); }
       if (action === "reset-tabs") {
         try { localStorage.removeItem(TAB_ORDER_KEY); } catch (err) {}
@@ -565,11 +607,18 @@ const SettingsPanel = {
 
   render() {
     const list = orderedTabs();
-    const theme = document.documentElement.getAttribute("data-theme") || "light";
+    const mode = Theme.mode();
+    const density = document.documentElement.getAttribute("data-density") || "comfortable";
+    const pal = Theme.palette();
     const has2fa = auth.currentUser ? multiFactor(auth.currentUser).enrolledFactors.length > 0 : false;
 
-    const themeBtn = (v, label) => `
-      <button data-action="set-theme" data-theme="${v}" class="chip ${theme === v ? "chip-on" : ""}">${icon(v === "dark" ? "moon" : "sun", 13)} ${label}</button>`;
+    const themeBtn = (v, label, ic) => `
+      <button data-action="set-theme" data-theme="${v}" class="chip ${mode === v ? "chip-on" : ""}">${icon(ic, 13)} ${label}</button>`;
+    const densityBtn = (v, label) => `<button data-action="set-density" data-density="${v}" class="chip ${density === v ? "chip-on" : ""}">${label}</button>`;
+    const themeCards = Theme.all.map((t) => `
+      <button data-action="set-palette" data-palette="${t.id}" class="th-card ${pal.id === t.id ? "on" : ""}">
+        ${Theme.swatch(t, Theme.isDark())}<b>${t.name}</b><small>${t.blurb}</small>
+      </button>`).join("");
 
     this.el.innerHTML = `
       <div class="flex items-center justify-between mb-5">
@@ -580,10 +629,16 @@ const SettingsPanel = {
         <button data-action="close-settings" class="btn-icon">${icon("x", 17)}</button>
       </div>
 
+      <p class="eyebrow mb-2.5">Colour theme · shared with the iPhone app's themes</p>
+      <div class="th-grid mb-7">${themeCards}</div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
         <div>
           <p class="eyebrow mb-2.5">Appearance</p>
-          <div class="flex gap-1.5">${themeBtn("light", "Light")}${themeBtn("dark", "Dark")}</div>
+          <div class="flex flex-wrap gap-1.5">${themeBtn("system", "Auto", "clock")}${themeBtn("light", "Light", "sun")}${themeBtn("dark", "Dark", "moon")}</div>
+          <p class="eyebrow mt-5 mb-2.5">Layout density</p>
+          <div class="flex gap-1.5">${densityBtn("comfortable", "Comfortable")}${densityBtn("compact", "Compact")}</div>
+          <p class="text-[11.5px] faint mt-2">The Home dashboard also has Cards / Compact and lets you choose its widgets.</p>
 
           <p class="eyebrow mt-6 mb-2.5">Security</p>
           <div class="flex items-center gap-3">

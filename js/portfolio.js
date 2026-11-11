@@ -7,6 +7,7 @@ import { Store, auth, escapeHtml } from "./store.js";
 import { icon } from "./icons.js";
 import { MarketData, logoHtml, yahooSymbol, isUS } from "./marketdata.js";
 import { lineChart, sparkline } from "./chart.js";
+import { InvestExtras } from "./investplus.js";
 
 const FINNHUB_KEY = "d98ii7hr01qkl0vtf940d98ii7hr01qkl0vtf94g";
 const WORKER_URL = "https://ledgerly-ai-intake.sahilpatel-ledgerly.workers.dev";
@@ -137,6 +138,15 @@ const PIE_CSS = `
 @keyframes pfShimmer { to { background-position:-100% 0; } }
 .allocation-swatch { width:7px; height:7px; border-radius:99px; flex:none; box-shadow:0 0 8px currentColor; }
 `;
+
+function accentRamp() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#3987e5";
+  const hex = raw.replace("#", "");
+  if (hex.length !== 6) return ["#75AEFF", "#478BEA", "#2C65B7", "#1A417B"];
+  const c = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const mix = (t, to) => "#" + c.map((v) => Math.round(v + (to - v) * t).toString(16).padStart(2, "0")).join("");
+  return [mix(0.38, 255), "#" + hex, mix(0.3, 0), mix(0.55, 0)];
+}
 
 export const PortfolioModule = {
   el: null,
@@ -441,7 +451,8 @@ export const PortfolioModule = {
     }
 
     // A tight blue family, graded by depth rather than unrelated rainbow colours.
-    const RAMP = ["#75AEFF", "#478BEA", "#2C65B7", "#1A417B"];
+    // Shades of the active theme's accent, so the dial matches whichever colour scheme is on.
+    const RAMP = accentRamp();
     const OTHER = "#263348";
     const TOP = 4;
 
@@ -702,6 +713,7 @@ export const PortfolioModule = {
     if (keepHist) this.el.querySelector("#pf-history").replaceWith(keepHist);
     this.syncHistory();
     this.loadSparks();
+    InvestExtras.mount(this.el);
   },
 
   // One 1M history call for every holding (sparklines), plus logos for US names.

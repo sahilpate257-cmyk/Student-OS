@@ -135,8 +135,9 @@ export const HomeModule = {
     try { return this[`w_${w.id}`](w); } catch (e) { console.warn("Widget failed", w.id, e); return ""; }
   },
 
-  big(v, sub, tone) {
-    return `<p class="hm-big ${tone || ""}">${v}</p>${sub ? `<p class="hm-sub">${sub}</p>` : ""}`;
+  big(v, sub, tone, count) {
+    const c = count != null && isFinite(count) ? ` data-count="${count}" data-prefix="${v.replace(/[\d,.].*$/, "")}"` : "";
+    return `<p class="hm-big ${tone || ""}"${c}>${v}</p>${sub ? `<p class="hm-sub">${sub}</p>` : ""}`;
   },
 
   w_today(w) {
@@ -199,7 +200,7 @@ export const HomeModule = {
     const sym = PortfolioModule.cur?.() || "£";
     if (!acc && inv == null) return this.frame(w, `<p class="hm-sub">Add bank balances on the phone app to see this.</p>`);
     const net = (acc ? acc.banks - acc.cards : 0) + (sym === "£" ? (inv || 0) : 0);
-    const inner = `${this.big(gbp(net))}
+    const inner = `${this.big(gbp(net), "", "", net)}
       <div class="hm-rows">
         ${acc ? `<p><span>Banks</span><b>${gbp(acc.banks)}</b></p><p><span>Cards owed</span><b class="${acc.cards > 0 ? "neg" : ""}">${gbp(-acc.cards)}</b></p>` : ""}
         ${inv != null && sym === "£" ? `<p><span>Investments</span><b>${gbp(inv)}</b></p>` : ""}
@@ -216,7 +217,7 @@ export const HomeModule = {
     for (const t of txs) if (t.type !== "income") cats[t.category || "Other"] = (cats[t.category || "Other"] || 0) + t.amount;
     const top = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 3);
     const max = top[0]?.[1] || 1;
-    const inner = `${this.big((inc - out >= 0 ? "+" : "") + gbp(inc - out), `in ${gbp(inc)} · out ${gbp(out)}`, inc - out >= 0 ? "pos" : "neg")}
+    const inner = `${this.big((inc - out >= 0 ? "+" : "") + gbp(inc - out), `in ${gbp(inc)} · out ${gbp(out)}`, inc - out >= 0 ? "pos" : "neg", inc - out)}
       ${top.length ? `<div class="hm-bars">${top.map(([c, v]) => `<div><span>${escapeHtml(c)}</span><i style="width:${Math.max(6, (v / max) * 100)}%"></i><b>${gbp(v)}</b></div>`).join("")}</div>` : ""}`;
     return this.frame(w, inner, "ledger-module");
   },

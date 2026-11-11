@@ -21,6 +21,7 @@ import { MarketsModule } from "./markets.js";
 import { HoldingModule } from "./holding.js";
 import { HomeModule } from "./home.js";
 import { Theme } from "./theme.js";
+import { transition, themeTransition, initMotion } from "./motion.js";
 
 Theme.init();
 const DENSITY_KEY = "ledgerly_density";
@@ -75,6 +76,12 @@ function renderTabBar() {
 }
 
 function showTab(id) {
+  const current = document.querySelector(".tab-view:not(.hidden)")?.id;
+  if (current && current !== id) return transition(() => switchTab(id));
+  switchTab(id);
+}
+
+function switchTab(id) {
   if (!TABS.some((t) => t.id === id)) id = TABS[0].id;
   document.querySelectorAll(".tab-view").forEach((el) => {
     const on = el.id === id;
@@ -94,7 +101,7 @@ window.ledgerlyShowTab = showTab;
 // Light/dark is now a mode of the active colour theme (see theme.js); kept as a function so the
 // header button and settings share one path.
 function applyTheme(mode) {
-  Theme.setMode(mode);
+  themeTransition(() => Theme.setMode(mode));
 }
 
 function syncThemeChrome() {
@@ -142,6 +149,7 @@ function bootstrapApp() {
   // build the bottom tab bar (respects the user's saved order)
   renderTabBar();
   SettingsPanel.init();
+  initMotion();
 
   [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule, MarketsModule, HoldingModule, HomeModule].forEach((m) => m.init());
 
@@ -525,7 +533,7 @@ const SettingsPanel = {
       const { action, id, theme } = btn.dataset;
       if (action === "close-settings") return this.toggle(false);
       if (action === "set-theme") { applyTheme(theme); return this.render(); }
-      if (action === "set-palette") { Theme.setPalette(btn.dataset.palette); return this.render(); }
+      if (action === "set-palette") { themeTransition(() => { Theme.setPalette(btn.dataset.palette); this.render(); }); return; }
       if (action === "set-density") {
         try { localStorage.setItem(DENSITY_KEY, btn.dataset.density); } catch (err) {}
         document.documentElement.setAttribute("data-density", btn.dataset.density);

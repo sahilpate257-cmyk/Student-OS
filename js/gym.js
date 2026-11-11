@@ -3,6 +3,7 @@
 
 import { Store, todayISO, escapeHtml, formatDate } from "./store.js";
 import { icon } from "./icons.js";
+import { FitExtras } from "./fitplus.js";
 
 export const GymModule = {
   el: null,
@@ -299,5 +300,6 @@ export const GymModule = {
           ${progressHtml}
         </div>
       </div>`;
+    FitExtras.mount(this.el);
   },
 };

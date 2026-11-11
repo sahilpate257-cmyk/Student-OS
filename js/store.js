@@ -92,6 +92,13 @@ export const Store = {
         const data = snap.exists() ? snap.data() : {};
         const out = {};
         for (const op of batch) {
+          if (op.path) {
+            // Nested field (e.g. ["gym","plan"]): merge:true deep-merges, so siblings are kept.
+            let o = out;
+            op.path.slice(0, -1).forEach((k) => { o = (o[k] ??= {}); });
+            o[op.path.at(-1)] = op.value ?? null;
+            continue;
+          }
           if (op.setting) {
             (out.settings ??= {})[op.setting] = op.value ?? null;
             continue;
@@ -172,6 +179,7 @@ export const Store = {
     this.state = { ...defaultState(), ...rest };
     // Anything not yet synced stays visible on top of the cloud copy.
     for (const op of this._ops) {
+      if (op.path) { setIn(this.state, op.path, op.value); continue; }
       if (op.setting) { this.state.settings = { ...this.state.settings, [op.setting]: op.value }; continue; }
       const list = (this.state[op.coll] = Array.isArray(this.state[op.coll]) ? this.state[op.coll].slice() : []);
       const i = list.findIndex((x) => x && x.id === op.id);
@@ -245,12 +253,25 @@ export const Store = {
     this.emit(`${collection}:changed`);
   },
 
+  /** Writes one nested field, e.g. setPath(["gym","plan"], {...}). */
+  setPath(path, value) {
+    setIn(this.state, path, value);
+    this.save({ path, value: value === undefined ? null : JSON.parse(JSON.stringify(value)) });
+    this.emit(`${path[0]}:changed`);
+  },
+
   setSetting(key, value) {
     this.state.settings[key] = value;
     this.save({ setting: key, value: value === undefined ? null : JSON.parse(JSON.stringify(value)) });
     this.emit("settings:changed");
   },
 };
+
+function setIn(obj, path, value) {
+  let o = obj;
+  path.slice(0, -1).forEach((k) => { o = (o[k] = o[k] && typeof o[k] === "object" ? o[k] : {}); });
+  o[path.at(-1)] = value;
+}
 
 // Firestore rejects undefined values; a JSON round trip drops them.
 function clean(o) { return JSON.parse(JSON.stringify(o)); }

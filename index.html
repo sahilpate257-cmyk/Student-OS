@@ -540,6 +540,32 @@
   </div>
 
   <style>
+    /* ===== motion ===== */
+    html { scroll-behavior: smooth; }
+    ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .32s; animation-timing-function: cubic-bezier(.22,1,.36,1); }
+    :root[data-vt="tab"]::view-transition-old(root) { animation-name: vtOut; }
+    :root[data-vt="tab"]::view-transition-new(root) { animation-name: vtIn; }
+    :root[data-vt="theme"]::view-transition-old(root), :root[data-vt="theme"]::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+    @keyframes vtOut { to { opacity: 0; transform: translateY(-6px) scale(.995); } }
+    @keyframes vtIn { from { opacity: 0; transform: translateY(10px) scale(.995); } }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+    .hm-grid > *, .cx-grid > *, .cx-side > *, .nt-list > *, .th-grid > *, .cx-pills > * { animation: rise .55s cubic-bezier(.22,1,.36,1) backwards; }
+    .hm-grid > :nth-child(2), .cx-grid > :nth-child(2), .nt-list > :nth-child(2), .cx-pills > :nth-child(2) { animation-delay: .05s; }
+    .hm-grid > :nth-child(3), .nt-list > :nth-child(3), .cx-pills > :nth-child(3) { animation-delay: .1s; }
+    .hm-grid > :nth-child(4), .nt-list > :nth-child(4), .cx-pills > :nth-child(4) { animation-delay: .15s; }
+    .hm-grid > :nth-child(5), .nt-list > :nth-child(5) { animation-delay: .2s; }
+    .hm-grid > :nth-child(6), .nt-list > :nth-child(6) { animation-delay: .25s; }
+    .hm-grid > :nth-child(n+7), .nt-list > :nth-child(n+7) { animation-delay: .3s; }
+    .hm-w, .th-card, .nt-item, .cx-pill, .cx-hero, .cx-card { transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, border-color .2s ease; }
+    .hm-w:hover, .cx-card:hover, .cx-hero:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 var(--edge, transparent), var(--shadow-lg); }
+    .btn, .btn-icon, .chip, .nav-btn, .side-btn, .cx-tabs button, .hm-seg button, .nt-tool, .cx-pill { transition: transform .12s ease, background .2s ease, color .2s ease, filter .2s ease; }
+    .btn:active, .btn-icon:active, .chip:active, .nav-btn:active, .side-btn:active, .cx-tabs button:active, .nt-tool:active, .cx-pill:active { transform: scale(.96); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+    .side-btn.active .ic { transform: scale(1.08); transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+    .nav-btn.active .nav-ic { animation: pop .35s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes pop { 50% { transform: scale(1.12); } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; } }
+
     /* ===== shell: sidebar on desktop, floating tab bar on phones ===== */
     .side-nav { display:none; }
     .bottom-nav { position:fixed; left:10px; right:10px; bottom:calc(10px + env(safe-area-inset-bottom)); z-index:30; max-width:720px; margin:0 auto;
@@ -657,30 +683,33 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20261111-000041",
-      "./js/store.js": "./js/store.js?v=20261111-000041",
-      "./js/icons.js": "./js/icons.js?v=20261111-000041",
-      "./js/calendar.js": "./js/calendar.js?v=20261111-000041",
-      "./js/ledger.js": "./js/ledger.js?v=20261111-000041",
-      "./js/notes.js": "./js/notes.js?v=20261111-000041",
-      "./js/gym.js": "./js/gym.js?v=20261111-000041",
-      "./js/portfolio.js": "./js/portfolio.js?v=20261111-000041",
-      "./js/intake.js": "./js/intake.js?v=20261111-000041",
-      "./js/insights.js": "./js/insights.js?v=20261111-000041",
-      "./js/markets.js": "./js/markets.js?v=20261111-000041",
-      "./js/marketdata.js": "./js/marketdata.js?v=20261111-000041",
-      "./js/chart.js": "./js/chart.js?v=20261111-000041",
-      "./js/holding.js": "./js/holding.js?v=20261111-000041",
-      "./js/theme.js": "./js/theme.js?v=20261111-000041",
-      "./js/themes.js": "./js/themes.js?v=20261111-000041",
-      "./js/home.js": "./js/home.js?v=20261111-000041"
+      "./js/app.js": "./js/app.js?v=20261111-011133",
+      "./js/store.js": "./js/store.js?v=20261111-011133",
+      "./js/icons.js": "./js/icons.js?v=20261111-011133",
+      "./js/calendar.js": "./js/calendar.js?v=20261111-011133",
+      "./js/ledger.js": "./js/ledger.js?v=20261111-011133",
+      "./js/notes.js": "./js/notes.js?v=20261111-011133",
+      "./js/gym.js": "./js/gym.js?v=20261111-011133",
+      "./js/portfolio.js": "./js/portfolio.js?v=20261111-011133",
+      "./js/intake.js": "./js/intake.js?v=20261111-011133",
+      "./js/insights.js": "./js/insights.js?v=20261111-011133",
+      "./js/markets.js": "./js/markets.js?v=20261111-011133",
+      "./js/marketdata.js": "./js/marketdata.js?v=20261111-011133",
+      "./js/chart.js": "./js/chart.js?v=20261111-011133",
+      "./js/holding.js": "./js/holding.js?v=20261111-011133",
+      "./js/theme.js": "./js/theme.js?v=20261111-011133",
+      "./js/themes.js": "./js/themes.js?v=20261111-011133",
+      "./js/home.js": "./js/home.js?v=20261111-011133",
+      "./js/motion.js": "./js/motion.js?v=20261111-011133",
+      "./js/investplus.js": "./js/investplus.js?v=20261111-011133",
+      "./js/fitplus.js": "./js/fitplus.js?v=20261111-011133"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20261111-000041";
+    var BUILD = "20261111-011133";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -721,6 +750,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20261111-000041"></script>
+  <script type="module" src="js/app.js?v=20261111-011133"></script>
 </body>
 </html>

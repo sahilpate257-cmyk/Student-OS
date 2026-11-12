@@ -13,7 +13,7 @@
 //                     cached entry can never be stale - it just stops being asked for.
 //   everything else-> straight to network, untouched (Firebase, the Worker API,
 //                     Yahoo quotes - never cache live money data).
-const BUILD = "20261112-161316";
+const BUILD = "20261112-184711";
 const CACHE = `ledgerly-${BUILD}`;
 const SHELL = ["./", "./index.html", "./manifest.json", "./icons/apple-touch-icon.png", "./icons/icon-192.png"];
 

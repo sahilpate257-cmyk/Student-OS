@@ -88,6 +88,8 @@ export const InvestExtras = {
       else Store.update("priceAlerts", a.id, patch);
     }
     this.flash(inp);
+    // The Worker checks alerts every 10 minutes and pushes to the phone.
+    api("/alerts/sync", { alerts: (Store.state.priceAlerts || []) }).catch(() => {});
   },
 
   flash(el) { el.classList.add("ix-saved"); setTimeout(() => el.classList.remove("ix-saved"), 900); },

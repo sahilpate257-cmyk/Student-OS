@@ -468,7 +468,7 @@ const SecurityPanel = {
 
     let body;
     if (this.pendingSecret) {
-      const otpauthUrl = this.pendingSecret.generateQrCodeUrl(user.email, "Ledgerly");
+      const otpauthUrl = this.pendingSecret.generateQrCodeUrl(user.email, "Orbit");
       body = `
         <p class="text-[13.5px] muted mb-2"><span class="font-semibold" style="color:var(--ink)">1.</span> Open your authenticator app (Google Authenticator, Authy, 1Password) and add an account with this setup key:</p>
         <div class="flex items-center gap-2 mb-2 flex-wrap">

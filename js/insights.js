@@ -193,7 +193,7 @@ export const InsightsModule = {
           </div>
         </li>`).join("")}</ul>`;
     } else {
-      hourlyHtml = `<p class="text-[12.5px] faint py-2">Add <b style="color:var(--ink)">hrs</b> when you log income and Ledgerly will show which hustle actually pays best per hour — the number most side-hustlers never work out.</p>`;
+      hourlyHtml = `<p class="text-[12.5px] faint py-2">Add <b style="color:var(--ink)">hrs</b> when you log income and Orbit will show which hustle actually pays best per hour — the number most side-hustlers never work out.</p>`;
     }
 
     // ---- tax position (UK, £ only) ----

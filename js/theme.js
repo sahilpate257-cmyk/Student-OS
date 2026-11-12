@@ -80,6 +80,7 @@ export const Theme = {
     root.setAttribute("data-theme", dark ? "dark" : "light");
     root.setAttribute("data-palette", t.id);
     root.setAttribute("data-pattern", t.pattern || "none");
+    root.setAttribute("data-uniform", t.uniform ? "true" : "false");
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", v["--bg"]);
     try {
       localStorage.setItem(CSS_KEY, JSON.stringify({ v, dark, id: t.id, pattern: t.pattern || "none" }));

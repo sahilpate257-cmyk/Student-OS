@@ -540,6 +540,13 @@
   </div>
 
   <style>
+    /* Uniform themes (Orbit, Mono, Graphite, Midnight, Paper): one neutral look for every section;
+       the accent is kept for buttons and highlights, green/red only for money in and out. */
+    :root[data-uniform="true"] .hm-w { --tint: var(--ink-faint) !important; }
+    :root[data-uniform="true"] .cx-pill span, :root[data-uniform="true"] .hm-wic { color: var(--ink-muted) !important; background: var(--sunken) !important; }
+    :root[data-uniform="true"] .cx-hero::before { background: radial-gradient(500px 260px at 0% 0%, var(--sunken), transparent 70%) !important; }
+    :root[data-uniform="true"] .hm-name { background: none; color: var(--ink-muted); -webkit-text-fill-color: currentColor; }
+
     /* ===== motion ===== */
     html { scroll-behavior: smooth; }
     ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .32s; animation-timing-function: cubic-bezier(.22,1,.36,1); }
@@ -683,33 +690,33 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/app.js": "./js/app.js?v=20261111-011133",
-      "./js/store.js": "./js/store.js?v=20261111-011133",
-      "./js/icons.js": "./js/icons.js?v=20261111-011133",
-      "./js/calendar.js": "./js/calendar.js?v=20261111-011133",
-      "./js/ledger.js": "./js/ledger.js?v=20261111-011133",
-      "./js/notes.js": "./js/notes.js?v=20261111-011133",
-      "./js/gym.js": "./js/gym.js?v=20261111-011133",
-      "./js/portfolio.js": "./js/portfolio.js?v=20261111-011133",
-      "./js/intake.js": "./js/intake.js?v=20261111-011133",
-      "./js/insights.js": "./js/insights.js?v=20261111-011133",
-      "./js/markets.js": "./js/markets.js?v=20261111-011133",
-      "./js/marketdata.js": "./js/marketdata.js?v=20261111-011133",
-      "./js/chart.js": "./js/chart.js?v=20261111-011133",
-      "./js/holding.js": "./js/holding.js?v=20261111-011133",
-      "./js/theme.js": "./js/theme.js?v=20261111-011133",
-      "./js/themes.js": "./js/themes.js?v=20261111-011133",
-      "./js/home.js": "./js/home.js?v=20261111-011133",
-      "./js/motion.js": "./js/motion.js?v=20261111-011133",
-      "./js/investplus.js": "./js/investplus.js?v=20261111-011133",
-      "./js/fitplus.js": "./js/fitplus.js?v=20261111-011133"
+      "./js/app.js": "./js/app.js?v=20261112-161202",
+      "./js/store.js": "./js/store.js?v=20261112-161202",
+      "./js/icons.js": "./js/icons.js?v=20261112-161202",
+      "./js/calendar.js": "./js/calendar.js?v=20261112-161202",
+      "./js/ledger.js": "./js/ledger.js?v=20261112-161202",
+      "./js/notes.js": "./js/notes.js?v=20261112-161202",
+      "./js/gym.js": "./js/gym.js?v=20261112-161202",
+      "./js/portfolio.js": "./js/portfolio.js?v=20261112-161202",
+      "./js/intake.js": "./js/intake.js?v=20261112-161202",
+      "./js/insights.js": "./js/insights.js?v=20261112-161202",
+      "./js/markets.js": "./js/markets.js?v=20261112-161202",
+      "./js/marketdata.js": "./js/marketdata.js?v=20261112-161202",
+      "./js/chart.js": "./js/chart.js?v=20261112-161202",
+      "./js/holding.js": "./js/holding.js?v=20261112-161202",
+      "./js/theme.js": "./js/theme.js?v=20261112-161202",
+      "./js/themes.js": "./js/themes.js?v=20261112-161202",
+      "./js/home.js": "./js/home.js?v=20261112-161202",
+      "./js/motion.js": "./js/motion.js?v=20261112-161202",
+      "./js/investplus.js": "./js/investplus.js?v=20261112-161202",
+      "./js/fitplus.js": "./js/fitplus.js?v=20261112-161202"
     }
   }
   </script>
 
   <script>
   (function () {
-    var BUILD = "20261111-011133";
+    var BUILD = "20261112-161202";
     function banner() {
       if (document.getElementById("ledgerly-update")) return;
       var d = document.createElement("div");
@@ -750,6 +757,6 @@
   })();
   </script>
 
-  <script type="module" src="js/app.js?v=20261111-011133"></script>
+  <script type="module" src="js/app.js?v=20261112-161202"></script>
 </body>
 </html>

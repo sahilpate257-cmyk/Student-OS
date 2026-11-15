@@ -11,6 +11,7 @@ const LAYOUT_KEY = "ledgerly_home_layout";   // "cards" | "compact"
 
 const WIDGETS = {
   today:    { label: "Today", icon: "calendar", tint: "var(--accent)" },
+  inbox:    { label: "Inbox", icon: "mail", tint: "var(--accent)" },
   networth: { label: "Net worth", icon: "wallet", tint: "var(--pos)" },
   money:    { label: "Money this month", icon: "insights", tint: "var(--neg)" },
   portfolio:{ label: "Portfolio", icon: "trending", tint: "var(--accent)" },
@@ -22,7 +23,7 @@ const WIDGETS = {
   accounts: { label: "Bank accounts", icon: "shield", tint: "var(--accent)" },
 };
 const DEFAULT = [
-  { id: "today", wide: true }, { id: "networth" }, { id: "money" }, { id: "notes", wide: true },
+  { id: "today", wide: true }, { id: "inbox", wide: true }, { id: "networth" }, { id: "money" }, { id: "notes", wide: true },
   { id: "portfolio" }, { id: "training" }, { id: "food" }, { id: "habits" }, { id: "focus" }, { id: "accounts" },
 ];
 
@@ -138,6 +139,16 @@ export const HomeModule = {
   big(v, sub, tone, count) {
     const c = count != null && isFinite(count) ? ` data-count="${count}" data-prefix="${v.replace(/[\d,.].*$/, "")}"` : "";
     return `<p class="hm-big ${tone || ""}"${c}>${v}</p>${sub ? `<p class="hm-sub">${sub}</p>` : ""}`;
+  },
+
+  w_inbox(w) {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem("ledgerly_gmail_digest") || "null"); } catch (e) {}
+    if (!d?.connected) return this.frame(w, `<p class="hm-sub">Connect Gmail in the Inbox tab to see what needs you.</p>`, "inbox-module");
+    const imp = (d.items || []).filter((i) => i.important).slice(0, 3);
+    const inner = `<p class="hm-big" style="font-size:20px;line-height:1.3">${escapeHtml(d.headline || "All caught up.")}</p>
+      ${imp.length ? `<ul class="hm-list">${imp.map((i) => `<li><span class="hm-dot"></span><span class="flex-1 truncate">${escapeHtml(i.line || i.subject || "")}</span><span class="hm-when">${escapeHtml((i.from || "").split(" ")[0])}</span></li>`).join("")}</ul>` : ""}`;
+    return this.frame(w, inner, "inbox-module");
   },
 
   w_today(w) {

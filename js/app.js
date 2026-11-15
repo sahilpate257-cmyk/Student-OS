@@ -20,6 +20,7 @@ import { InsightsModule } from "./insights.js";
 import { MarketsModule } from "./markets.js";
 import { HoldingModule } from "./holding.js";
 import { HomeModule } from "./home.js";
+import { InboxModule } from "./inbox.js";
 import { Theme } from "./theme.js";
 import { transition, themeTransition, initMotion } from "./motion.js";
 
@@ -32,6 +33,7 @@ try { document.documentElement.setAttribute("data-density", localStorage.getItem
 // persistent strip above these tabs, since one paste can fill several of them at once.
 const TABS = [
   { id: "home-module", icon: "home", label: "Home" },
+  { id: "inbox-module", icon: "mail", label: "Inbox" },
   { id: "portfolio-module", icon: "trending", label: "Invest" },
   { id: "markets-module", icon: "news", label: "Markets" },
   { id: "ledger-module", icon: "wallet", label: "Cash" },
@@ -95,6 +97,7 @@ function switchTab(id) {
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   if (id === "markets-module") MarketsModule.onShow();
   if (id === "home-module") HomeModule.render();
+  if (id === "inbox-module") InboxModule.onShow();
 }
 window.ledgerlyShowTab = showTab;
 
@@ -151,7 +154,7 @@ function bootstrapApp() {
   SettingsPanel.init();
   initMotion();
 
-  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule, MarketsModule, HoldingModule, HomeModule].forEach((m) => m.init());
+  [CalendarModule, LedgerModule, BrainDump, GymModule, PortfolioModule, IntakeModule, InsightsModule, MarketsModule, HoldingModule, HomeModule, InboxModule].forEach((m) => m.init());
 
   // restore the last tab this device was on
   let last = TABS[0].id;

@@ -1,5 +1,6 @@
 // fitplus.js — Fitness extras shared with the phone: the weekly plan (gym.plan), a plate calculator,
-// and AI meal plans (nutrition.plan) with one-click logging and a shopping list for Notes.
+// AI meal plans (nutrition.plan) with one-click logging and a shopping list for Notes, and a barcode
+// lookup (Open Food Facts) that logs a scanned/typed product straight into today's food diary.
 
 import { Store, escapeHtml, todayISO } from "./store.js";
 import { icon } from "./icons.js";
@@ -23,6 +24,11 @@ export const FitExtras = {
   mealDay: 0,
   working: false,
   msg: "",
+  code: "",
+  product: null,
+  grams: 100,
+  looking: false,
+  scanning: false,
 
   mount(parent) {
     injectStyles();
@@ -32,6 +38,7 @@ export const FitExtras = {
       box.id = "fx-root";
       box.addEventListener("click", (e) => this.onClick(e));
       box.addEventListener("change", (e) => this.onChange(e));
+      box.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.id === "fx-code") { e.preventDefault(); this.code = e.target.value.trim(); this.lookup(); } });
     }
     parent.appendChild(box);
     this.box = box;
@@ -51,6 +58,10 @@ export const FitExtras = {
     if (a === "log") return this.logMeal(Number(b.dataset.i));
     if (a === "shop") return this.shoppingToNotes();
     if (a === "gen") return this.generate();
+    if (a === "lookup") { this.code = this.box.querySelector("#fx-code")?.value.trim() || ""; return this.lookup(); }
+    if (a === "scan") return this.scan();
+    if (a === "stopscan") return this.stopScan();
+    if (a === "logfood") return this.logProduct();
   },
 
   onChange(e) {
@@ -61,6 +72,7 @@ export const FitExtras = {
       Store.setPath(["gym", "plan"], { ...this.plan, days });
       return this.render();
     }
+    if (t.id === "fx-grams") { this.grams = Math.max(1, Number(t.value) || 100); return this.render(); }
     if (t.id === "fx-bar") { this.bar = Number(t.value); localStorage.setItem("ledgerly_plate_bar", this.bar); return this.render(); }
     if (t.id === "fx-target") { this.target = Number(t.value) || this.bar; localStorage.setItem("ledgerly_plate_target", this.target); return this.render(); }
   },
@@ -68,8 +80,8 @@ export const FitExtras = {
   render() {
     if (!this.box) return;
     const t = (id, label, ic) => `<button data-fx="tab" data-tab="${id}" class="${this.tab === id ? "on" : ""}">${icon(ic, 14)} ${label}</button>`;
-    this.box.innerHTML = `<div class="ix-tabs fx-tabs">${t("plan", "Weekly plan", "calendar")}${t("plates", "Plates", "dumbbell")}${t("meals", "Meal plan", "utensils")}</div>
-      <div class="fx-panel">${this.tab === "plates" ? this.platesHTML() : this.tab === "meals" ? this.mealsHTML() : this.planHTML()}</div>`;
+    this.box.innerHTML = `<div class="ix-tabs fx-tabs">${t("plan", "Weekly plan", "calendar")}${t("plates", "Plates", "dumbbell")}${t("meals", "Meal plan", "utensils")}${t("barcode", "Barcode", "search")}</div>
+      <div class="fx-panel">${this.tab === "plates" ? this.platesHTML() : this.tab === "meals" ? this.mealsHTML() : this.tab === "barcode" ? this.barcodeHTML() : this.planHTML()}</div>`;
   },
 
   planHTML() {
@@ -149,6 +161,86 @@ export const FitExtras = {
     this.render();
   },
 
+  barcodeHTML() {
+    const p = this.product, canScan = "BarcodeDetector" in window && navigator.mediaDevices?.getUserMedia;
+    const form = `<div class="fx-code">
+      <input id="fx-code" class="input" inputmode="numeric" autocomplete="off" placeholder="Barcode (EAN/UPC)" value="${escapeHtml(this.code)}" />
+      <button class="btn btn-primary btn-sm" data-fx="lookup" ${this.looking ? "disabled" : ""}>${this.looking ? "Looking…" : "Look up"}</button>
+      ${canScan ? `<button class="btn btn-ghost btn-sm" data-fx="${this.scanning ? "stopscan" : "scan"}">${this.scanning ? "Stop" : "Scan"}</button>` : ""}
+    </div>
+    ${this.scanning ? `<video id="fx-video" class="fx-video" playsinline muted></video>` : ""}
+    ${this.msg ? `<p class="text-[12.5px] mt-2 ${this.msg.startsWith("✓") ? "pos" : "neg"}">${escapeHtml(this.msg)}</p>` : ""}`;
+    if (!p) return form + `<p class="faint mt-3 text-[13.5px]">Type or scan a barcode to pull calories and macros from Open Food Facts, then log it to today.</p>`;
+    const f = this.grams / 100, r = (v) => Math.round(v * f);
+    return form + `<div class="fx-meal mt-3">
+      <small>${escapeHtml(p.brand || "Open Food Facts")}</small><b>${escapeHtml(p.name)}</b>
+      <p class="faint">Per 100 g: ${Math.round(p.kcal)} kcal · ${p.protein.toFixed(1)}P ${p.carbs.toFixed(1)}C ${p.fat.toFixed(1)}F${p.serving ? ` · serving ${escapeHtml(p.serving)}` : ""}</p>
+      <div class="flex items-center gap-2"><input id="fx-grams" type="number" min="1" step="1" value="${this.grams}" class="input" style="width:100px" /><span class="faint text-[13px]">g</span>
+        <b class="num" style="margin-left:auto">${r(p.kcal)} kcal · ${r(p.protein)}P ${r(p.carbs)}C ${r(p.fat)}F</b></div>
+      <button class="btn btn-ghost btn-sm" data-fx="logfood">${icon("plus", 13)} Log it today</button></div>`;
+  },
+
+  async lookup() {
+    const code = this.code.replace(/\s+/g, "");
+    this.msg = ""; this.product = null;
+    if (!/^\d{8,14}$/.test(code)) { this.msg = "Enter a valid barcode (8–14 digits)."; return this.render(); }
+    this.looking = true; this.render();
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,nutriments,serving_size,serving_quantity`);
+      if (!res.ok) throw new Error(`Lookup failed (${res.status}).`);
+      const d = await res.json();
+      if (d.status !== 1 || !d.product) throw new Error("Product not found on Open Food Facts.");
+      const n = d.product.nutriments || {};
+      const kcal = n["energy-kcal_100g"] ?? (n["energy_100g"] != null ? n["energy_100g"] / 4.184 : null);
+      if (kcal == null) throw new Error("This product has no nutrition data yet.");
+      this.product = {
+        name: d.product.product_name || "Unnamed product", brand: (d.product.brands || "").split(",")[0].trim(),
+        kcal: Number(kcal), protein: Number(n.proteins_100g) || 0, carbs: Number(n.carbohydrates_100g) || 0, fat: Number(n.fat_100g) || 0,
+        serving: d.product.serving_size || "",
+      };
+      this.grams = Number(d.product.serving_quantity) > 0 ? Math.round(Number(d.product.serving_quantity)) : 100;
+    } catch (err) { this.msg = err.message || "Lookup failed."; }
+    this.looking = false;
+    this.render();
+  },
+
+  logProduct() {
+    const p = this.product;
+    if (!p) return;
+    const f = this.grams / 100, r = (v) => Math.round(v * f * 10) / 10;
+    const day = [...(Store.state.nutrition?.days?.[dayKey()] || [])];
+    day.push({ id: crypto.randomUUID(), name: p.brand ? `${p.name} (${p.brand})` : p.name, portion: `${this.grams} g`, kcal: Math.round(p.kcal * f), protein: r(p.protein), carbs: r(p.carbs), fat: r(p.fat), source: "barcode" });
+    Store.setPath(["nutrition", "days", dayKey()], day);
+    this.msg = `✓ Logged ${p.name} to today.`;
+    this.render();
+  },
+
+  async scan() {
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    } catch { this.msg = "Camera access was blocked."; return this.render(); }
+    this.scanning = true; this.msg = ""; this.render();
+    const video = this.box.querySelector("#fx-video");
+    video.srcObject = this.stream; await video.play().catch(() => {});
+    const det = new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });
+    const tick = async () => {
+      if (!this.scanning) return;
+      try {
+        const [hit] = await det.detect(video);
+        if (hit?.rawValue) { this.code = hit.rawValue; this.stopScan(); return this.lookup(); }
+      } catch { /* frame not ready */ }
+      setTimeout(tick, 250);
+    };
+    tick();
+  },
+
+  stopScan() {
+    this.scanning = false;
+    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream = null;
+    this.render();
+  },
+
   async generate() {
     const t = this.targets();
     if (!t || this.working) return;
@@ -196,6 +288,8 @@ function injectStyles() {
 .fx-meal small{font-size:11.5px;font-weight:700;color:var(--ink-faint);text-transform:capitalize}
 .fx-meal b{font-size:15px}.fx-meal p{font-size:12.5px;color:var(--ink-muted)}
 .fx-meal .btn{align-self:flex-start;margin-top:auto}
+.fx-code{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.fx-code .input{flex:1;min-width:180px}
+.fx-video{width:100%;max-width:360px;border-radius:16px;margin-top:10px;background:#000}
 .fx-shop{margin-top:14px;padding:14px;border-radius:18px;background:var(--sunken);font-size:13.5px;line-height:1.7}
 `;
   document.head.appendChild(s);

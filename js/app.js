@@ -42,6 +42,19 @@ const TABS = [
   { id: "notes-module", icon: "notebook", label: "Notes" },
   { id: "gym-module", icon: "dumbbell", label: "Gym" },
 ];
+// The navigation shows four groups; pages inside a group get a small tab strip at the top of the page.
+const GROUPS = [
+  { id: "home", icon: "home", label: "Home", tabs: [["home-module", "Home"]] },
+  { id: "money", icon: "wallet", label: "Money", tabs: [["ledger-module", "Cash"], ["portfolio-module", "Invest"], ["markets-module", "Markets"], ["insights-module", "Insights"]] },
+  { id: "plan", icon: "calendar", label: "Plan", tabs: [["calendar-module", "Due"], ["notes-module", "Notes"], ["inbox-module", "Inbox"]] },
+  { id: "fitness", icon: "dumbbell", label: "Fitness", tabs: [["gym-module", "Gym"]] },
+];
+const groupOf = (tabId) => GROUPS.find((g) => g.tabs.some(([id]) => id === tabId)) || GROUPS[0];
+const LAST_IN_GROUP_KEY = "ledgerly_group_last";
+function lastInGroup(g) {
+  try { const m = JSON.parse(localStorage.getItem(LAST_IN_GROUP_KEY) || "{}"); if (g.tabs.some(([id]) => id === m[g.id])) return m[g.id]; } catch (e) {}
+  return g.tabs[0][0];
+}
 const TAB_KEY = "ledgerly_tab";
 const TAB_ORDER_KEY = "ledgerly_tab_order";
 
@@ -60,21 +73,35 @@ function saveTabOrder(list) {
 
 function renderTabBar() {
   const bar = document.getElementById("tab-bar");
-  const tabs = orderedTabs();
-  bar.style.gridTemplateColumns = `repeat(${tabs.length}, minmax(0, 1fr))`;
-  bar.innerHTML = tabs.map((t) => `
-    <button data-nav="${t.id}" class="nav-btn" title="${t.label}">
-      <span class="nav-ic">${icon(t.icon, 18)}</span><span>${t.label}</span>
+  bar.style.gridTemplateColumns = `repeat(${GROUPS.length}, minmax(0, 1fr))`;
+  bar.innerHTML = GROUPS.map((g) => `
+    <button data-group="${g.id}" class="nav-btn" title="${g.label}">
+      <span class="nav-ic">${icon(g.icon, 18)}</span><span>${g.label}</span>
     </button>`).join("");
   const side = document.getElementById("side-tabs");
-  if (side) side.innerHTML = tabs.map((t) => `
-    <button data-nav="${t.id}" class="side-btn" title="${t.label}">${icon(t.icon, 18)}<span>${t.label}</span></button>`).join("");
-  document.querySelectorAll("#tab-bar [data-nav], #side-tabs [data-nav]").forEach((btn) =>
-    btn.addEventListener("click", () => showTab(btn.dataset.nav))
+  if (side) side.innerHTML = GROUPS.map((g) => `
+    <button data-group="${g.id}" class="side-btn" title="${g.label}">${icon(g.icon, 18)}<span>${g.label}</span></button>`).join("");
+  document.querySelectorAll("#tab-bar [data-group], #side-tabs [data-group]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const g = GROUPS.find((x) => x.id === btn.dataset.group);
+      showTab(lastInGroup(g));
+    })
   );
   // keep the active highlight in sync with whatever view is showing
   const current = document.querySelector(".tab-view:not(.hidden)")?.id;
-  if (current) document.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("active", b.dataset.nav === current));
+  if (current) syncNav(current);
+}
+
+function syncNav(tabId) {
+  const g = groupOf(tabId);
+  document.querySelectorAll("[data-group]").forEach((b) => b.classList.toggle("active", b.dataset.group === g.id));
+  // sub-tab strip for groups with more than one page
+  const strip = document.getElementById("sub-tabs");
+  if (!strip) return;
+  strip.classList.toggle("hidden", g.tabs.length < 2);
+  strip.innerHTML = g.tabs.length < 2 ? "" : g.tabs.map(([id, label]) =>
+    `<button data-sub="${id}" class="sub-tab ${id === tabId ? "on" : ""}">${label}</button>`).join("");
+  strip.querySelectorAll("[data-sub]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.sub)));
 }
 
 function showTab(id) {
@@ -92,8 +119,12 @@ function switchTab(id) {
     el.classList.remove("is-active");
     if (on) { void el.offsetWidth; el.classList.add("is-active"); }
   });
-  document.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("active", b.dataset.nav === id));
-  try { localStorage.setItem(TAB_KEY, id); } catch (e) {}
+  syncNav(id);
+  try {
+    localStorage.setItem(TAB_KEY, id);
+    const m = JSON.parse(localStorage.getItem(LAST_IN_GROUP_KEY) || "{}"); m[groupOf(id).id] = id;
+    localStorage.setItem(LAST_IN_GROUP_KEY, JSON.stringify(m));
+  } catch (e) {}
   window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   if (id === "markets-module") MarketsModule.onShow();
   if (id === "home-module") HomeModule.render();
@@ -127,7 +158,7 @@ function bootstrapApp() {
   // header chrome icons
   document.getElementById("settings-btn").innerHTML = icon("cog", 18);
   document.getElementById("sign-out").innerHTML = icon("logout", 17);
-  document.getElementById("quick-add").innerHTML = icon("sparkle", 15) + "<span>Smart Paste</span>";
+  document.getElementById("quick-add").innerHTML = icon("sparkle", 15) + '<span class="hidden sm:inline">Smart Paste</span>';
 
   // theme toggle (device-level preference, applied pre-paint by the head script)
   syncThemeChrome();
@@ -137,16 +168,6 @@ function bootstrapApp() {
   document.getElementById("side-settings").innerHTML = `${icon("cog", 18)}<span>Settings</span>`;
   document.getElementById("side-settings").addEventListener("click", () => { SettingsPanel.toggle(true); });
 
-  // persistent strip above the tabs — same trigger as the header button
-  const strip = document.getElementById("smart-paste-strip");
-  strip.innerHTML = `
-    <span class="grid place-items-center w-8 h-8 rounded-[9px] shrink-0" style="background:var(--sunken);color:var(--ink)">${icon("sparkle", 16)}</span>
-    <span class="flex-1 min-w-0">
-      <span class="block text-[13.5px] font-semibold">Smart Paste</span>
-      <span class="block text-[11.5px] faint truncate">Paste a statement, syllabus or notes — it fills itself in</span>
-    </span>
-    <span class="faint shrink-0">${icon("chevronRight2", 16)}</span>`;
-  strip.addEventListener("click", () => IntakeModule.open());
   document.getElementById("quick-add").addEventListener("click", () => IntakeModule.open());
 
   // build the bottom tab bar (respects the user's saved order)
@@ -661,13 +682,6 @@ const SettingsPanel = {
 
           <p class="eyebrow mt-6 mb-2.5">Account</p>
           <p class="text-[13px] muted">${auth.currentUser?.email ?? ""}</p>
-        </div>
-
-        <div>
-          <p class="eyebrow mb-1">Tab order</p>
-          <p class="text-[11.5px] faint mb-2">Press the grip and drag to reorder. Saved on this device.</p>
-          <ul id="tab-order-list" class="mb-3"></ul>
-          <button data-action="reset-tabs" class="btn btn-ghost btn-sm">Reset to default</button>
         </div>
       </div>`;
     this.renderTabOrderList(list);

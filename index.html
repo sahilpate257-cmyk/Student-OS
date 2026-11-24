@@ -514,9 +514,8 @@
       <section id="settings-panel" class="hidden card card-pad mb-4"></section>
       <section id="security-panel" class="hidden card card-pad mb-4"></section>
 
-      <!-- persistent entry point to Smart Paste, sits above whichever tab is active -->
-      <button id="smart-paste-strip" class="w-full flex items-center gap-3 mb-4 px-4 py-3 rounded-2xl text-left transition"
-              style="background:var(--surface);border:1px solid var(--border)"></button>
+      <!-- tab strip for pages inside a navigation group (Money, Plan) -->
+      <div id="sub-tabs" class="sub-tabs hidden"></div>
 
       <section id="home-module" class="tab-view hidden"></section>
       <section id="inbox-module" class="tab-view hidden"></section>
@@ -581,6 +580,10 @@
       border-radius:26px; background:var(--nav-bg); border:1px solid var(--border); box-shadow: inset 0 1px 0 var(--edge, rgba(255,255,255,.08)), var(--shadow-lg);
       -webkit-backdrop-filter: blur(26px) saturate(1.5); backdrop-filter: blur(26px) saturate(1.5); padding:4px 4px; overflow-x:auto; scrollbar-width:none; }
     .bottom-nav::-webkit-scrollbar { display:none; }
+    .sub-tabs { display:flex; gap:4px; padding:4px; margin:0 0 14px; background:var(--sunken); border-radius:14px; width:fit-content; max-width:100%; overflow-x:auto; }
+    .sub-tabs.hidden { display:none; }
+    .sub-tab { appearance:none; border:0; background:transparent; color:var(--ink-muted); font:inherit; font-size:13.5px; font-weight:600; padding:7px 16px; border-radius:10px; cursor:pointer; white-space:nowrap; transition:background .2s, color .2s; }
+    .sub-tab.on { background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }
     .side-tabs { display:flex; flex-direction:column; gap:2px; margin-top:18px; flex:1; overflow-y:auto; }
     .side-btn { display:flex; align-items:center; gap:12px; width:100%; padding:10px 12px; border-radius:14px; font-size:14px; font-weight:600; color:var(--ink-muted); text-align:left; transition:background .15s ease,color .15s ease; }
     .side-btn:hover { background:var(--sunken); color:var(--ink); }

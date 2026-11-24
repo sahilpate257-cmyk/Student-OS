@@ -469,4 +469,4 @@ export const THEMES = [
   "uniform": false
  }
 ];
-export const DEFAULT_THEME = "obsidian";
+export const DEFAULT_THEME = "orbit";
